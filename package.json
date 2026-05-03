@@ -1,7 +1,7 @@
 {
   "name": "coffee-profile-liff-app",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vp dev",
@@ -24,6 +24,7 @@
     "postgres": "^3.4.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^7.14.2",
     "tailwind-merge": "^3.0.0",
     "tailwindcss-animate": "^1.0.7"
   },
