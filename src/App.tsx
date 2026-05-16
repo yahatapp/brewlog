@@ -14,7 +14,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex flex-col min-h-screen bg-coffee-background text-coffee-text">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-coffee-secondary/20 p-4">
-        <h1 className="text-xl font-bold text-coffee-primary tracking-tight">Coffee Profile</h1>
+        <h1 className="text-xl font-bold text-coffee-primary tracking-tight">Brewlog</h1>
       </header>
 
       <main className="flex-1 pb-24 p-4 max-w-md mx-auto w-full">{children}</main>

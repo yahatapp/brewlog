@@ -1,8 +1,12 @@
 import { hc } from "hono/client";
-import type { AppType } from "../../functions/api/[[route]]";
+import type { AppType } from "@/api";
 
-// Use the current origin for the API client
-// In development, Vite proxy can handle this, or we can use an environment variable.
-const client = hc<AppType>("/");
+export const getApiClient = (token?: string) => {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return hc<AppType>("/", {
+    headers,
+  }).api;
+};
 
-export const api = client.api;
+// For backward compatibility or simple cases
+export const api = hc<AppType>("/").api;

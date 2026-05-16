@@ -1,5 +1,5 @@
 {
-  description = "Coffee Profile LIFF App Development Environment";
+  description = "Brewlog Development Environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -26,15 +26,13 @@
             nodejs_24
             git
             pnpm
-            terraform
           ];
 
           shellHook = ''
             export PATH="$PWD/node_modules/.bin:$PATH"
-            echo "☕ Coffee Profile LIFF App Dev Environment"
+            echo "☕ Brewlog Dev Environment"
             echo "Node.js: $(node --version)"
             echo "pnpm: $(pnpm --version)"
-            echo "Terraform: $(terraform --version)"
           '';
         };
       }

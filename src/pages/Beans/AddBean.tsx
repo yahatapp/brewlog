@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { useLiff } from "../../hooks/useLiff";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -8,6 +9,7 @@ import { Card, CardContent } from "../../components/ui/card";
 
 const AddBean = () => {
   const navigate = useNavigate();
+  const { api } = useLiff();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -18,15 +20,35 @@ const AddBean = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!api) return;
     setIsLoading(true);
 
-    // TODO: Implement API call
-    console.log("Submitting bean:", formData);
+    try {
+      const res = await api.beans.$post({
+        json: {
+          name: formData.name,
+          origin: formData.origin || null,
+          roastLevel: formData.roastLevel,
+          purchaseDate: formData.purchaseDate || null,
+        },
+      });
 
-    setTimeout(() => {
+      if (res.ok) {
+        navigate("/beans");
+      } else {
+        const errorData = await res.text();
+        console.error("Failed to create bean", errorData);
+      }
+    } catch (err) {
+      console.error("Error submitting bean", err);
+    } finally {
       setIsLoading(false);
-      navigate("/beans");
-    }, 1000);
+    }
+  };
+
+  const getRoastLabel = (level: number) => {
+    const labels = ["浅煎り", "中浅煎り", "中煎り", "中深煎り", "深煎り"];
+    return labels[level - 1];
   };
 
   return (
@@ -49,6 +71,7 @@ const AddBean = () => {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="rounded-xl border-coffee-secondary/20 focus:ring-coffee-primary"
               />
             </div>
 
@@ -59,12 +82,18 @@ const AddBean = () => {
                 placeholder="例: エチオピア"
                 value={formData.origin}
                 onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
+                className="rounded-xl border-coffee-secondary/20"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="roast">焙煎度 (1: 浅煎り 〜 5: 深煎り)</Label>
-              <div className="flex items-center space-x-4">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="roast">焙煎度</Label>
+                <span className="text-sm font-bold text-coffee-primary">
+                  {getRoastLabel(formData.roastLevel)}
+                </span>
+              </div>
+              <div className="px-1">
                 <input
                   type="range"
                   id="roast"
@@ -77,7 +106,11 @@ const AddBean = () => {
                     setFormData({ ...formData, roastLevel: parseInt(e.target.value) })
                   }
                 />
-                <span className="font-bold text-coffee-primary w-4">{formData.roastLevel}</span>
+                <div className="flex justify-between mt-2 text-[10px] text-coffee-secondary">
+                  <span>浅煎り</span>
+                  <span>中煎り</span>
+                  <span>深煎り</span>
+                </div>
               </div>
             </div>
 
@@ -88,6 +121,7 @@ const AddBean = () => {
                 type="date"
                 value={formData.purchaseDate}
                 onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                className="rounded-xl border-coffee-secondary/20"
               />
             </div>
           </CardContent>
@@ -95,11 +129,11 @@ const AddBean = () => {
 
         <Button
           type="submit"
-          className="w-full rounded-2xl h-12 text-base shadow-lg"
+          className="w-full rounded-2xl h-12 text-base shadow-lg bg-coffee-primary hover:bg-coffee-primary/90"
           disabled={isLoading}
         >
           {isLoading ? (
-            <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
           ) : (
             <>
               <Save size={18} className="mr-2" />

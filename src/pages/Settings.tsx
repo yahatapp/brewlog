@@ -66,7 +66,7 @@ const Settings = () => {
       </section>
 
       <div className="text-center">
-        <p className="text-[10px] text-coffee-secondary/40">Coffee Profile v0.1.0</p>
+        <p className="text-[10px] text-coffee-secondary/40">Brewlog v0.1.0</p>
       </div>
     </div>
   );

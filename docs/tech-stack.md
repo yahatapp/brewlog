@@ -1,6 +1,6 @@
 # 技術スタック選定
 
-このドキュメントでは、Coffee Profile LIFF Apの技術スタックに関する決定事項を記録します。
+このドキュメントでは、Brewlogの技術スタックに関する決定事項を記録します。
 
 ## アーキテクチャ概要
 
@@ -20,15 +20,15 @@ LINE Front-end Framework (LIFF) をフロントエンドとし、Cloudflare Work
 ## バックエンド / インフラ
 
 - **Framework:** Hono
-- **Runtime:** Cloudflare Pages Functions
+- **Runtime:** Cloudflare Workers (with Static Assets)
 - **Database:** Supabase (PostgreSQL)
-- **ORM:** Drizzle ORM (Cloudflare Workers / Pages に最適化)
+- **ORM:** Drizzle ORM (Cloudflare Workers に最適化)
 
-## プロジェクト構造（予定）
+## プロジェクト構造
 
 - `src/`: フロントエンド (React)
-- `functions/api/[[route]].ts`: バックエンド (Hono)
-- `schema/`: データベース定義 (Drizzle ORM)
+- `src/api/index.ts`: バックエンド (Hono)
+- `db/`: データベース定義 (Drizzle ORM)
 
 ## データベース / 認証
 

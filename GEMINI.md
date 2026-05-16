@@ -2,14 +2,14 @@
 
 ## Project Overview
 
-- **Name:** Coffee Profile LIFF App
+- **Name:** Brewlog
 - **Description:** A lightweight coffee brewing log application for personal/couple use, running as a LINE LIFF App.
-- **Infrastructure:** Cloudflare Pages (Frontend & Functions) + Supabase (PostgreSQL).
+- **Infrastructure:** Cloudflare Workers (Backend & Static Assets) + Supabase (PostgreSQL).
 
 ## Tech Stack
 
 - **Frontend:** React (Vite)
-- **Backend:** Hono (Cloudflare Pages Functions)
+- **Backend:** Hono (Cloudflare Workers)
 - **Database:** Supabase + Drizzle ORM
 - **UI Framework:** shadcn/ui (Base UI Edition) + Tailwind CSS
 - **Authentication:** LIFF ID Token Verification (Custom Auth in Hono)
@@ -21,9 +21,8 @@
 
 - **Management:** Nix + direnv (`flake.nix`)
   - The following tools are managed automatically via Nix:
-    - Node.js (v22)
+    - Node.js (v24)
     - pnpm (v10.x)
-    - Terraform
     - git
   - **Setup:**
     - Run `direnv allow` to activate the environment.
@@ -49,7 +48,7 @@
   - Follow the Oxc-based rules integrated in Vite+.
 - **Directory Structure:**
   - `src/`: Frontend React application.
-  - `functions/api/`: Backend Hono application.
+  - `src/api/`: Backend Hono application (Cloudflare Workers).
   - `db/`: Database schema and migrations.
   - `docs/`: Design documents and decisions (Always refer to these).
 - **Security:**

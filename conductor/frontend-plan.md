@@ -1,8 +1,8 @@
-# Frontend Implementation Plan: Coffee Profile LIFF App
+# Frontend Implementation Plan: Brewlog
 
 ## 1. Objective
 
-LINE LIFF上で動作する、個人用のコーヒー抽出記録アプリ（Coffee Profile）のフロントエンドを構築する。スマホでの閲覧・操作に最適化し、シンプルで使いやすいUIを提供する。
+LINE LIFF上で動作する、個人用のコーヒー抽出記録アプリ（Brewlog）のフロントエンドを構築する。スマホでの閲覧・操作に最適化し、シンプルで使いやすいUIを提供する。
 
 ## 2. Key Requirements & Constraints (MVP)
 
