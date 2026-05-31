@@ -1,66 +1,85 @@
 # GEMINI.md
 
+Persistent context and project guidelines for Gemini Code in Brewlog.
+
 ## Project Overview
 
 - **Name:** Brewlog
-- **Description:** A lightweight coffee brewing log application for personal/couple use, running as a LINE LIFF App.
-- **Infrastructure:** Cloudflare Workers (Backend & Static Assets) + Supabase (PostgreSQL).
+- **Description:** A lightweight, high-performance coffee brewing log app for personal/couple use, running as a LINE LIFF App.
+- **Architecture:** LINE LIFF (React + Vite) <-> Cloudflare Workers (Hono API) <-> Supabase (PostgreSQL).
+- **Environment:** Managed via Nix (`flake.nix`) and `direnv`. Ensure you run `direnv allow` and track changes in Git.
+- **Reference Docs:**
+  - Hono Standard: https://hono.dev/llms.txt
+  - Tech Stack Decisions: @docs/tech-stack.md
+  - Custom Authentication: @docs/auth-flow.md
+  - Database Schema: @docs/database-design.md
 
-## Tech Stack
+---
 
-- **Frontend:** React (Vite)
-- **Backend:** Hono (Cloudflare Workers)
-- **Database:** Supabase + Drizzle ORM
-- **UI Framework:** shadcn/ui (Base UI Edition) + Tailwind CSS
-- **Authentication:** LIFF ID Token Verification (Custom Auth in Hono)
-- **Tooling:**
-  - **Package Manager:** `pnpm`
-  - **Unified Toolchain:** `Vite+` (`vp` CLI) for Linting, Formatting, and Type-checking.
+## Development Commands
 
-## Development Environment
+### Dependency Management
 
-- **Management:** Nix + direnv (`flake.nix`)
-  - The following tools are managed automatically via Nix:
-    - Node.js (v24)
-    - pnpm (v10.x)
-    - git
-  - **Setup:**
-    - Run `direnv allow` to activate the environment.
-    - When modifying or creating `flake.nix`, ensure it is tracked by Git (e.g., `git add flake.nix`) so Nix can recognize it.
+- **Install dependencies:** `pnpm install`
+- **Add package:** `pnpm add <pkg>` (Use `pnpm` exclusively, do not use `npm` or `yarn`)
 
-## Commands
+### Development & Build
 
-- **Install:** `pnpm install`
-- **Development:** `vp dev`
-- **Build:** `vp build`
-- **Lint/Format/Type-check:** `vp check`
-- **Auto-fix:** `vp check --fix`
-- **Testing:** `vp test`
-- **Database Migration:**
-  - Generate: `pnpm run db:generate`
-  - Migrate: `pnpm run db:migrate`
+- **Start dev server:** `vp dev`
+- **Build production app:** `vp build`
 
-## Coding Standards & Rules
+### Quality Assurance
 
-- **Type Safety:** Always use TypeScript. Ensure Hono RPC (`AppType`) is used for end-to-end type safety between frontend and backend.
-- **Formatting & Linting:**
-  - Use `vp check` before any commit or after significant changes.
-  - Follow the Oxc-based rules integrated in Vite+.
-- **Directory Structure:**
-  - `src/`: Frontend React application.
-  - `src/api/`: Backend Hono application (Cloudflare Workers).
-  - `db/`: Database schema and migrations.
-  - `docs/`: Design documents and decisions (Always refer to these).
-- **Security:**
-  - NEVER commit secrets or `.env` files.
-  - Authentication must follow the flow defined in `docs/auth-flow.md` (ID Token validation + Allowlist).
-- **Communication:**
-  - Refer to `docs/database-design.md` for any schema changes.
-  - Keep the application lightweight and optimized for Cloudflare Workers/Pages.
+- **Lint / Format / Typecheck:** `vp check`
+- **Auto-fix issues:** `vp check --fix`
+- **Run tests:** `vp test`
 
-## Agent Instructions
+### Database (Drizzle ORM)
 
-- Use `pnpm` for adding/removing packages.
-- Run `vp check --fix` automatically after modifying code to ensure style consistency.
-- When creating new UI components, prioritize `shadcn/ui` with `Base UI` primitives.
-- Always check `docs/tech-stack.md` for the latest architectural decisions.
+- **Generate migrations:** `pnpm run db:generate`
+- **Apply migrations:** `pnpm run db:migrate`
+
+---
+
+## Directory Structure
+
+```
+├── db/                       # Database schema and Drizzle migrations
+├── docs/                     # Design decisions, auth flows, and database designs
+├── src/                      # React Frontend application (Vite)
+│   └── api/                  # Backend Hono API (Cloudflare Workers)
+│       └── index.ts          # Main Hono entrypoint
+├── package.json              # Unified monorepo config
+└── flake.nix                 # Nix development shell environment
+```
+
+---
+
+## Coding Standards & Conventions
+
+### 1. Type Safety & API Design
+
+- **100% TypeScript:** Never use `any` or bypass type-safety rules.
+- **Hono RPC:** Always use shared Hono `AppType` to achieve end-to-end type safety between frontend client and backend Hono routes.
+
+### 2. Styling & UI Framework
+
+- **shadcn/ui + Base UI:** Always prioritize modern Base UI primitives combined with Tailwind CSS. Avoid standard Radix-based shadcn components if Base UI alternatives exist.
+- **Aesthetics & Premium Design:** Follow premium web design guidelines. Use vibrant HSL colors, smooth transitions, glassmorphic touches, and custom typography. Avoid basic/default styling.
+
+### 3. Formatting & Linting
+
+- **Strict Formatting:** Run `vp check --fix` automatically after every code change. Ensure there are no type errors, lint warnings, or formatting issues before finishing your task.
+- **Oxc Rules:** Strictly follow Oxc-based rules integrated in `Vite+` (`vp`).
+- **Automatic Exit Hooks:** A `Stop` lifecycle hook is configured in [.agents/hooks.json](file:///Users/kenya/Documents/application/brewlog/.agents/hooks.json) to automatically run `pnpm run check:fix` upon agent session termination (the `Stop` hook). Nevertheless, proactively run `vp check --fix` manually to ensure correctness during development.
+
+---
+
+## Critical Rules & "Do Nots" (Common Pitfalls)
+
+- 🚫 **DO NOT** commit `.env`, `.dev.vars`, or any secrets/keys to Git.
+- 🚫 **DO NOT** use `npm` or `yarn` for package management; only use `pnpm`.
+- 🚫 **DO NOT** bypass `vp check` — ensure the toolchain passes completely before finalizing any feature. Explicitly run `vp check --fix` after editing files.
+- 🚫 **DO NOT** use standard Supabase Auth client-side signup/login. Authentication must strictly leverage LINE LIFF ID Token verification + backend Allowlist matching (see `docs/auth-flow.md`).
+- 🚫 **DO NOT** make database schema changes without updating Drizzle files under `db/` and generating/running migrations via `pnpm run db:generate` and `pnpm run db:migrate` (see `docs/database-design.md`).
+- 🚫 **DO NOT** write verbose or bloated components. Keep them modular, reusable, and structured logically.

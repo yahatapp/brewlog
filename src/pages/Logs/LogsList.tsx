@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ClipboardList, Loader2, Star, Calendar } from "lucide-react";
-import { useLiff } from "../../hooks/useLiff";
+import { Plus, ClipboardList, Star, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { api } from "@/lib/api";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
@@ -9,7 +9,13 @@ interface BrewLog {
   id: string;
   beanId: string;
   method: string | null;
+  dripperId: string | null;
+  dripper?: {
+    name: string;
+  } | null;
   rating: number | null;
+  brewDate: string | null;
+  tempType: string;
   createdAt: string;
   bean: {
     name: string;
@@ -18,18 +24,19 @@ interface BrewLog {
 
 const LogsList = () => {
   const navigate = useNavigate();
-  const { api } = useLiff();
   const [logs, setLogs] = useState<BrewLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"all" | "hot" | "ice">("all");
+  const [sortBy, setSortBy] = useState<"date" | "bean" | "rating">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     const fetchLogs = async () => {
-      if (!api) return;
       try {
-        const res = await api.logs.$get();
+        const res = await api.api.logs.$get();
         if (res.ok) {
           const data = await res.json();
-          setLogs(data as BrewLog[]);
+          setLogs(data as unknown as BrewLog[]);
         }
       } catch (err) {
         console.error("Failed to fetch logs", err);
@@ -39,16 +46,83 @@ const LogsList = () => {
     };
 
     fetchLogs();
-  }, [api]);
+  }, []);
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("ja-JP", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatDate = (log: BrewLog) => {
+    if (log.brewDate) {
+      const [year, month, day] = log.brewDate.split("-");
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      const dayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+      return `${parseInt(month)}月${parseInt(day)}日(${dayOfWeek})`;
+    }
+    const date = new Date(log.createdAt);
+    const dayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+    return `${date.getMonth() + 1}月${date.getDate()}日(${dayOfWeek})`;
   };
+
+  const hotLogsCount = logs.filter((log) => log.tempType !== "ice").length;
+  const iceLogsCount = logs.filter((log) => log.tempType === "ice").length;
+
+  const filteredLogs = logs.filter((log) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "hot") return log.tempType !== "ice";
+    if (activeTab === "ice") return log.tempType === "ice";
+    return true;
+  });
+
+  const getLogTimestamp = (log: BrewLog): number => {
+    if (log.brewDate) {
+      const [year, month, day] = log.brewDate.split("-");
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).getTime();
+    }
+    return new Date(log.createdAt).getTime();
+  };
+
+  const sortedLogs = [...filteredLogs].sort((a, b) => {
+    if (sortBy === "date") {
+      const dateA = getLogTimestamp(a);
+      const dateB = getLogTimestamp(b);
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    }
+
+    if (sortBy === "bean") {
+      const nameA = a.bean.name;
+      const nameB = b.bean.name;
+      const nameCompare =
+        sortOrder === "desc" ? nameB.localeCompare(nameA, "ja") : nameA.localeCompare(nameB, "ja");
+
+      if (nameCompare !== 0) return nameCompare;
+
+      // セカンドソート: 日付 (降順)
+      const dateA = getLogTimestamp(a);
+      const dateB = getLogTimestamp(b);
+      return dateB - dateA;
+    }
+
+    if (sortBy === "rating") {
+      const ratingA = a.rating;
+      const ratingB = b.rating;
+
+      if (ratingA === null && ratingB === null) {
+        const dateA = getLogTimestamp(a);
+        const dateB = getLogTimestamp(b);
+        return dateB - dateA;
+      }
+      if (ratingA === null) return 1;
+      if (ratingB === null) return -1;
+
+      const ratingCompare = sortOrder === "desc" ? ratingB - ratingA : ratingA - ratingB;
+
+      if (ratingCompare !== 0) return ratingCompare;
+
+      // セカンドソート: 日付 (降順)
+      const dateA = getLogTimestamp(a);
+      const dateB = getLogTimestamp(b);
+      return dateB - dateA;
+    }
+
+    return 0;
+  });
 
   if (isLoading) {
     return (
@@ -61,7 +135,7 @@ const LogsList = () => {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-coffee-primary">抽出記録履歴</h2>
+        <h2 className="text-xl font-bold text-coffee-primary">抽出履歴</h2>
         <Button
           size="sm"
           variant="outline"
@@ -72,11 +146,170 @@ const LogsList = () => {
         </Button>
       </div>
 
-      {logs.length === 0 ? (
+      {/* タブナビゲーション */}
+      {logs.length > 0 && (
+        <div className="flex p-1 bg-gray-100/80 rounded-xl space-x-1">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              activeTab === "all"
+                ? "bg-white text-coffee-primary shadow-sm"
+                : "text-coffee-secondary/70 hover:text-coffee-primary hover:bg-white/50"
+            }`}
+          >
+            <span>すべて</span>
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] transition-colors duration-200 ${
+                activeTab === "all"
+                  ? "bg-coffee-primary/10 text-coffee-primary"
+                  : "bg-gray-200 text-gray-500"
+              }`}
+            >
+              {logs.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("hot")}
+            className={`flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              activeTab === "hot"
+                ? "bg-orange-50 text-orange-600 shadow-sm border border-orange-100"
+                : "text-coffee-secondary/70 hover:text-orange-600 hover:bg-orange-50/30"
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+            <span>ホット</span>
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] transition-colors duration-200 ${
+                activeTab === "hot" ? "bg-orange-100 text-orange-700" : "bg-gray-200 text-gray-500"
+              }`}
+            >
+              {hotLogsCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("ice")}
+            className={`flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              activeTab === "ice"
+                ? "bg-blue-50 text-blue-600 shadow-sm border border-blue-100"
+                : "text-coffee-secondary/70 hover:text-blue-600 hover:bg-blue-50/30"
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            <span>アイス</span>
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] transition-colors duration-200 ${
+                activeTab === "ice" ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-500"
+              }`}
+            >
+              {iceLogsCount}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* ソートUI */}
+      {logs.length > 0 && (
+        <div className="flex items-center justify-between px-1 py-1.5 text-xs text-coffee-secondary bg-coffee-primary/5 rounded-xl p-2 border border-coffee-primary/10">
+          <div className="flex items-center space-x-1.5">
+            <span className="font-semibold text-coffee-primary/80">ソート:</span>
+            <div className="flex bg-gray-200/60 rounded-lg p-0.5 space-x-0.5">
+              <button
+                onClick={() => {
+                  if (sortBy === "date") {
+                    setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                  } else {
+                    setSortBy("date");
+                    setSortOrder("desc");
+                  }
+                }}
+                className={`px-3 py-1 rounded-md transition-all duration-200 flex items-center space-x-0.5 cursor-pointer ${
+                  sortBy === "date"
+                    ? "bg-white text-coffee-primary shadow-sm font-bold"
+                    : "text-coffee-secondary/70 hover:text-coffee-primary hover:bg-white/30"
+                }`}
+              >
+                <span>日付</span>
+                {sortBy === "date" &&
+                  (sortOrder === "desc" ? (
+                    <ArrowDown size={10} className="ml-0.5 text-coffee-primary" />
+                  ) : (
+                    <ArrowUp size={10} className="ml-0.5 text-coffee-primary" />
+                  ))}
+              </button>
+
+              <button
+                onClick={() => {
+                  if (sortBy === "bean") {
+                    setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                  } else {
+                    setSortBy("bean");
+                    setSortOrder("asc");
+                  }
+                }}
+                className={`px-3 py-1 rounded-md transition-all duration-200 flex items-center space-x-0.5 cursor-pointer ${
+                  sortBy === "bean"
+                    ? "bg-white text-coffee-primary shadow-sm font-bold"
+                    : "text-coffee-secondary/70 hover:text-coffee-primary hover:bg-white/30"
+                }`}
+              >
+                <span>豆</span>
+                {sortBy === "bean" &&
+                  (sortOrder === "desc" ? (
+                    <ArrowDown size={10} className="ml-0.5 text-coffee-primary" />
+                  ) : (
+                    <ArrowUp size={10} className="ml-0.5 text-coffee-primary" />
+                  ))}
+              </button>
+
+              <button
+                onClick={() => {
+                  if (sortBy === "rating") {
+                    setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                  } else {
+                    setSortBy("rating");
+                    setSortOrder("desc");
+                  }
+                }}
+                className={`px-3 py-1 rounded-md transition-all duration-200 flex items-center space-x-0.5 cursor-pointer ${
+                  sortBy === "rating"
+                    ? "bg-white text-coffee-primary shadow-sm font-bold"
+                    : "text-coffee-secondary/70 hover:text-coffee-primary hover:bg-white/30"
+                }`}
+              >
+                <span>評価</span>
+                {sortBy === "rating" &&
+                  (sortOrder === "desc" ? (
+                    <ArrowDown size={10} className="ml-0.5 text-coffee-primary" />
+                  ) : (
+                    <ArrowUp size={10} className="ml-0.5 text-coffee-primary" />
+                  ))}
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-lg border border-coffee-primary/10 hover:border-coffee-primary/20 hover:bg-white bg-white/60 transition-all duration-200 active:scale-95 text-coffee-secondary/80 font-medium cursor-pointer"
+          >
+            <ArrowUpDown size={12} className="text-coffee-primary" />
+            <span>{sortOrder === "desc" ? "降順" : "昇順"}</span>
+          </button>
+        </div>
+      )}
+
+      {filteredLogs.length === 0 ? (
         <Card className="border-dashed border-2">
-          <CardContent className="p-12 text-center">
+          <CardContent className="p-12 text-center animate-in fade-in duration-300">
             <ClipboardList className="mx-auto text-coffee-secondary/30 mb-4" size={48} />
-            <p className="text-coffee-secondary text-sm">記録はまだありません。</p>
+            <p className="text-coffee-secondary text-sm">
+              {activeTab === "all"
+                ? "記録はまだありません。"
+                : activeTab === "hot"
+                  ? "ホットコーヒーの記録はまだありません。"
+                  : "アイスコーヒーの記録はまだありません。"}
+            </p>
             <p className="text-xs text-coffee-secondary/60 mt-2">最高の一杯を記録しましょう！</p>
             <Button className="mt-6 rounded-xl" onClick={() => navigate("/logs/new")}>
               抽出を記録する
@@ -84,9 +317,13 @@ const LogsList = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {logs.map((log) => (
-            <Card key={log.id} className="hover:border-coffee-primary/30 transition-colors">
+        <div className="space-y-3 animate-in fade-in duration-300" key={activeTab}>
+          {sortedLogs.map((log) => (
+            <Card
+              key={log.id}
+              className="hover:border-coffee-primary/30 transition-colors cursor-pointer hover:shadow-sm"
+              onClick={() => navigate(`/logs/${log.id}`)}
+            >
               <CardContent className="p-4">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
@@ -94,9 +331,23 @@ const LogsList = () => {
                     <div className="flex items-center text-xs text-coffee-secondary space-x-2">
                       <span className="flex items-center">
                         <Calendar size={12} className="mr-1" />
-                        {formatDate(log.createdAt)}
+                        {formatDate(log)}
                       </span>
-                      {log.method && <span>• {log.method}</span>}
+                      {(log.dripper?.name || log.method) && (
+                        <span>• {log.dripper?.name || log.method}</span>
+                      )}
+                      <span>•</span>
+                      {log.tempType === "ice" ? (
+                        <span className="inline-flex items-center text-blue-500 font-semibold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1 animate-pulse" />
+                          アイス
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-orange-500/90 font-semibold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 mr-1" />
+                          ホット
+                        </span>
+                      )}
                     </div>
                   </div>
                   {log.rating && (
@@ -114,5 +365,23 @@ const LogsList = () => {
     </div>
   );
 };
+
+const Loader2 = ({ className, size }: { className?: string; size?: number }) => (
+  <svg
+    className={`animate-spin ${className}`}
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+  >
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    />
+  </svg>
+);
 
 export default LogsList;

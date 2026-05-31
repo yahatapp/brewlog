@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "../../components/ui/button";
@@ -7,6 +7,17 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Card, CardContent } from "../../components/ui/card";
 import { COFFEE_COUNTRIES } from "../../utils/flag";
+
+interface Bean {
+  id: string;
+  name: string;
+  origin: string | null;
+  purchaseStore: string | null;
+  roastLevel: number | null;
+  purchaseDate: string | null;
+  isArchived: boolean;
+  processMethod?: string | null;
+}
 
 const PROCESS_METHODS = [
   { value: "ナチュラル", label: "ナチュラル" },
@@ -21,30 +32,68 @@ const PROCESS_METHODS = [
   { value: "その他", label: "その他" },
 ];
 
-const AddBean = () => {
+const EditBean = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     origin: "",
     purchaseStore: "",
     roastLevel: 3,
-    purchaseDate: new Date().toISOString().split("T")[0],
+    purchaseDate: "",
+    isArchived: false,
     processMethod: "",
   });
 
+  useEffect(() => {
+    const fetchBean = async () => {
+      try {
+        const res = await api.api.beans.$get();
+        if (res.ok) {
+          const beans = (await res.json()) as Bean[];
+          const bean = beans.find((b) => b.id === id);
+          if (bean) {
+            setFormData({
+              name: bean.name,
+              origin: bean.origin || "",
+              purchaseStore: bean.purchaseStore || "",
+              roastLevel: bean.roastLevel || 3,
+              purchaseDate: bean.purchaseDate || "",
+              isArchived: bean.isArchived,
+              processMethod: bean.processMethod || "",
+            });
+          } else {
+            console.error("Bean not found");
+            navigate("/beans");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch bean details", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBean();
+  }, [id, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (!id) return;
+    setIsSaving(true);
 
     try {
-      const res = await api.api.beans.$post({
+      const res = await api.api.beans[":id"].$patch({
+        param: { id },
         json: {
           name: formData.name,
           origin: formData.origin || null,
           purchaseStore: formData.purchaseStore || null,
           roastLevel: formData.roastLevel,
           purchaseDate: formData.purchaseDate || null,
+          isArchived: formData.isArchived,
           processMethod: formData.processMethod || null,
         },
       });
@@ -53,12 +102,12 @@ const AddBean = () => {
         navigate("/beans");
       } else {
         const errorData = await res.text();
-        console.error("Failed to create bean", errorData);
+        console.error("Failed to update bean", errorData);
       }
     } catch (err) {
-      console.error("Error submitting bean", err);
+      console.error("Error updating bean", err);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -67,13 +116,21 @@ const AddBean = () => {
     return labels[level - 1];
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="animate-spin text-coffee-primary" size={32} />
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
       <div className="flex items-center space-x-2">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
           <ArrowLeft size={20} />
         </Button>
-        <h2 className="text-xl font-bold text-coffee-primary">豆を登録する</h2>
+        <h2 className="text-xl font-bold text-coffee-primary">豆の編集</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -177,20 +234,36 @@ const AddBean = () => {
                 className="rounded-xl border-coffee-secondary/20"
               />
             </div>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                id="archive"
+                type="checkbox"
+                checked={formData.isArchived}
+                onChange={(e) => setFormData({ ...formData, isArchived: e.target.checked })}
+                className="h-4 w-4 rounded border-coffee-secondary/35 text-coffee-primary focus:ring-coffee-primary focus:ring-offset-0"
+              />
+              <Label
+                htmlFor="archive"
+                className="text-sm font-medium cursor-pointer text-coffee-text"
+              >
+                この豆をアーカイブする (一覧に表示されなくなります)
+              </Label>
+            </div>
           </CardContent>
         </Card>
 
         <Button
           type="submit"
           className="w-full rounded-2xl h-12 text-base shadow-lg bg-coffee-primary hover:bg-coffee-primary/90"
-          disabled={isLoading}
+          disabled={isSaving}
         >
-          {isLoading ? (
+          {isSaving ? (
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
           ) : (
             <>
               <Save size={18} className="mr-2" />
-              保存する
+              変更を保存する
             </>
           )}
         </Button>
@@ -199,4 +272,4 @@ const AddBean = () => {
   );
 };
 
-export default AddBean;
+export default EditBean;

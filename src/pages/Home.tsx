@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Coffee, ClipboardList, Loader2, Star } from "lucide-react";
 import { useLiff } from "../hooks/useLiff";
+import { api } from "@/lib/api";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 
@@ -11,22 +12,22 @@ interface RecentLog {
   method: string | null;
   rating: number | null;
   createdAt: string;
+  tempType: string;
   bean: {
     name: string;
   };
 }
 
 const Home = () => {
-  const { profile, api } = useLiff();
+  const { profile } = useLiff();
   const navigate = useNavigate();
   const [recentLogs, setRecentLogs] = useState<RecentLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchRecentLogs = async () => {
-      if (!api) return;
       try {
-        const res = await api.logs.$get();
+        const res = await api.api.logs.$get();
         if (res.ok) {
           const data = await res.json();
           // Show only top 3 recent logs
@@ -40,13 +41,12 @@ const Home = () => {
     };
 
     fetchRecentLogs();
-  }, [api]);
+  }, []);
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("ja-JP", {
-      month: "short",
-      day: "numeric",
-    });
+    const date = new Date(dateStr);
+    const dayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+    return `${date.getMonth() + 1}月${date.getDate()}日(${dayOfWeek})`;
   };
 
   return (
@@ -95,19 +95,32 @@ const Home = () => {
               {recentLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-center justify-between p-2 rounded-lg bg-coffee-background/50 border border-coffee-secondary/5"
-                  onClick={() => navigate("/logs")}
+                  className="flex items-center justify-between p-2 rounded-lg bg-coffee-background/50 border border-coffee-secondary/5 cursor-pointer hover:bg-coffee-background/80 transition-colors"
+                  onClick={() => navigate(`/logs/${log.id}`)}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="bg-white p-2 rounded-xl shadow-sm">
-                      <Coffee size={16} className="text-coffee-primary" />
+                    <div
+                      className={`p-2 rounded-xl shadow-sm transition-colors ${
+                        log.tempType === "ice"
+                          ? "bg-blue-50 text-blue-500"
+                          : "bg-orange-50/80 text-orange-500"
+                      }`}
+                    >
+                      <Coffee size={16} />
                     </div>
                     <div>
                       <p className="text-xs font-bold text-coffee-text line-clamp-1">
                         {log.bean.name}
                       </p>
-                      <p className="text-[10px] text-coffee-secondary">
-                        {formatDate(log.createdAt)} {log.method && `• ${log.method}`}
+                      <p className="flex items-center text-[10px] text-coffee-secondary gap-1 mt-0.5">
+                        <span>{formatDate(log.createdAt)}</span>
+                        {log.method && <span>• {log.method}</span>}
+                        <span>•</span>
+                        {log.tempType === "ice" ? (
+                          <span className="text-blue-500 font-semibold">アイス</span>
+                        ) : (
+                          <span className="text-orange-500/90 font-semibold">ホット</span>
+                        )}
                       </p>
                     </div>
                   </div>

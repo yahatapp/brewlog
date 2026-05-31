@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import liff from "@line/liff";
 import type { Liff } from "@line/liff";
-import { getApiClient } from "@/lib/api";
+import { api, setApiToken } from "@/lib/api";
 
 interface BackendProfile {
   lineUserId: string;
@@ -17,15 +17,18 @@ interface Household {
   createdAt: string;
 }
 
+// モジュールレベルで初期化Promiseを管理して、React 18の二重初期化を防ぐ
+let liffInitPromise: Promise<void> | null = null;
+
 interface LiffContextType {
   liff: Liff | null;
   isLoggedIn: boolean;
   profile: Awaited<ReturnType<Liff["getProfile"]>> | null;
   backendProfile: BackendProfile | null;
   household: Household | null;
-  api: ReturnType<typeof getApiClient> | null;
   error: string | null;
   isLoading: boolean;
+  relogin: () => void;
 }
 
 const LiffContext = createContext<LiffContextType>({
@@ -34,9 +37,9 @@ const LiffContext = createContext<LiffContextType>({
   profile: null,
   backendProfile: null,
   household: null,
-  api: null,
   error: null,
   isLoading: true,
+  relogin: () => {},
 });
 
 export const LiffProvider = ({ children }: { children: ReactNode }) => {
@@ -48,14 +51,34 @@ export const LiffProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [apiClient, setApiClient] = useState<ReturnType<typeof getApiClient> | null>(null);
+  const relogin = () => {
+    // URLから古い認可パラメータを除去してクリーンなURLにする
+    const cleanUrl = window.location.origin + window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+
+    if (liffState) {
+      if (liffState.isLoggedIn()) {
+        liffState.logout();
+      }
+      liffState.login();
+    } else {
+      window.location.href = cleanUrl;
+    }
+  };
 
   useEffect(() => {
     const initLiff = async () => {
       try {
-        await liff.init({
-          liffId: import.meta.env.VITE_LIFF_ID || "",
-        });
+        const liffId = import.meta.env.VITE_LIFF_ID || "";
+
+        // すでに実行中の初期化処理があればそれを待つ
+        if (!liffInitPromise) {
+          liffInitPromise = liff.init({
+            liffId,
+            withLoginOnExternalBrowser: true,
+          });
+        }
+        await liffInitPromise;
         setLiffState(liff);
 
         if (liff.isLoggedIn()) {
@@ -63,14 +86,22 @@ export const LiffProvider = ({ children }: { children: ReactNode }) => {
           const userProfile = await liff.getProfile();
           setProfile(userProfile);
 
+          // URLパラメータに code や state が残っている場合、初期化成功後に速やかに除去する（二重リロード・二重処理対策）
+          if (
+            typeof window !== "undefined" &&
+            (window.location.search.includes("code=") || window.location.search.includes("state="))
+          ) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+
           // Get ID Token for backend auth
           const idToken = liff.getIDToken();
           if (idToken) {
-            const client = getApiClient(idToken);
-            setApiClient(client);
+            setApiToken(idToken);
 
             // Initialize backend profile
-            const res = await client.auth.init.$post({
+            const res = await api.api.auth.init.$post({
               json: {
                 displayName: userProfile.displayName,
                 avatarUrl: userProfile.pictureUrl,
@@ -82,8 +113,18 @@ export const LiffProvider = ({ children }: { children: ReactNode }) => {
               setBackendProfile(data.profile as BackendProfile);
               setHousehold(data.household as Household);
             } else {
-              console.error("Backend init failed", await res.text());
-              setError("Failed to initialize backend session");
+              console.error("Backend init failed", res.status, await res.text());
+              if (res.status === 401) {
+                setError("セッションの有効期限が切れました。もう一度ログインしてください。");
+              } else if (res.status === 403) {
+                setError(
+                  "アクセス権限がありません。許可されたLINEアカウントでログインしてください。",
+                );
+              } else {
+                setError(
+                  "セッションの初期化に失敗しました。通信状況を確認し、再度お試しください。",
+                );
+              }
             }
           }
         } else {
@@ -108,8 +149,8 @@ export const LiffProvider = ({ children }: { children: ReactNode }) => {
         profile,
         backendProfile,
         household,
-        api: apiClient,
         error,
+        relogin,
         isLoading,
       }}
     >

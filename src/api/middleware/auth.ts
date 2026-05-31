@@ -1,24 +1,13 @@
 import { createMiddleware } from "hono/factory";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { HTTPException } from "hono/http-exception";
+import type { Env } from "../types";
 
 // LINEの公開鍵(JWKS)のエンドポイント
 const JWKS_URL = new URL("https://api.line.me/oauth2/v2.1/certs");
 const JWKS = createRemoteJWKSet(JWKS_URL);
 
-type Bindings = {
-  LINE_CHANNEL_ID: string;
-  ALLOWED_LINE_USER_IDS: string;
-};
-
-type Variables = {
-  lineUserId: string;
-};
-
-export const authMiddleware = createMiddleware<{
-  Bindings: Bindings;
-  Variables: Variables;
-}>(async (c, next) => {
+export const authMiddleware = createMiddleware<Env>(async (c, next) => {
   const authHeader = c.req.header("Authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -41,6 +30,9 @@ export const authMiddleware = createMiddleware<{
     }
 
     // 2. Allowlistチェック (認可)
+    if (!c.env.ALLOWED_LINE_USER_IDS) {
+      throw new HTTPException(500, { message: "Internal Server Error: Missing configuration" });
+    }
     const allowedIds = c.env.ALLOWED_LINE_USER_IDS.split(",").map((id) => id.trim());
 
     if (!allowedIds.includes(sub)) {

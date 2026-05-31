@@ -1,0 +1,11 @@
+{
+  "vp-check-fix": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "pnpm",
+        "args": ["run", "check:fix"]
+      }
+    ]
+  }
+}

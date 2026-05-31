@@ -8,10 +8,9 @@ dist-ssr
 .wrangler
 
 # Environment variables
-.env
-.env.local
-.env.*.local
+.env*
 *.env
+!.env.example
 # If .envrc contains secrets, it should be ignored. 
 # But usually 'use flake' is safe.
 # .envrc 
@@ -39,3 +38,12 @@ Thumbs.db
 
 # Local configuration
 *.local
+
+# cloudflare workers
+.dev.vars
+
+# antigravity
+.antigravitycli/
+
+# vp
+.vite-hooks

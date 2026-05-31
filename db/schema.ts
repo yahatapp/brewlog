@@ -13,6 +13,8 @@ export const householdsRelations = relations(households, ({ many }) => ({
   profiles: many(profiles),
   beans: many(beans),
   brewLogs: many(brewLogs),
+  drippers: many(drippers),
+  grinders: many(grinders),
 }));
 
 export const profiles = pgTable("profiles", {
@@ -42,9 +44,11 @@ export const beans = pgTable("beans", {
     .references(() => households.id),
   name: text("name").notNull(),
   origin: text("origin"),
+  purchaseStore: text("purchase_store"),
   roastLevel: integer("roast_level"), // 1:浅煎り 〜 5:深煎り 等
   purchaseDate: date("purchase_date"),
   imageUrl: text("image_url"),
+  processMethod: text("process_method"),
   isArchived: boolean("is_archived").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -71,16 +75,25 @@ export const brewLogs = pgTable("brew_logs", {
     .notNull()
     .references(() => households.id),
   method: text("method"),
-  grindSize: text("grind_size"),
+  grindSize: integer("grind_size"), // Changed from text to integer for click count
   waterTemp: integer("water_temp"),
   beanAmount: real("bean_amount"),
   waterAmount: real("water_amount"),
-  rating: integer("rating"),
+  rating: real("rating"),
   note: text("note"),
+  brewDate: date("brew_date"), // Actual brewing date, optional
+  dripperId: uuid("dripper_id").references(() => drippers.id), // Reference to dripper master
+  grinderId: uuid("grinder_id").references(() => grinders.id), // Reference to grinder master
+  tempType: text("temp_type").default("hot").notNull(),
+  iceAmount: real("ice_amount"),
+  yieldAmount: real("yield_amount"),
+  drawdownTime: integer("drawdown_time"),
+  bloomingTime: integer("blooming_time"),
+  hasBypass: boolean("has_bypass").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const brewLogsRelations = relations(brewLogs, ({ one }) => ({
+export const brewLogsRelations = relations(brewLogs, ({ one, many }) => ({
   bean: one(beans, {
     fields: [brewLogs.beanId],
     references: [beans.id],
@@ -92,5 +105,79 @@ export const brewLogsRelations = relations(brewLogs, ({ one }) => ({
   household: one(households, {
     fields: [brewLogs.householdId],
     references: [households.id],
+  }),
+  dripper: one(drippers, {
+    fields: [brewLogs.dripperId],
+    references: [drippers.id],
+  }),
+  grinder: one(grinders, {
+    fields: [brewLogs.grinderId],
+    references: [grinders.id],
+  }),
+  pours: many(brewPours),
+}));
+
+export const drippers = pgTable("drippers", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  householdId: uuid("household_id")
+    .notNull()
+    .references(() => households.id),
+  name: text("name").notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const drippersRelations = relations(drippers, ({ one, many }) => ({
+  household: one(households, {
+    fields: [drippers.householdId],
+    references: [households.id],
+  }),
+  brewLogs: many(brewLogs),
+}));
+
+export const grinders = pgTable("grinders", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  householdId: uuid("household_id")
+    .notNull()
+    .references(() => households.id),
+  name: text("name").notNull(),
+  fineMax: integer("fine_max").default(6).notNull(),
+  mediumFineMax: integer("medium_fine_max").default(9).notNull(),
+  mediumMax: integer("medium_max").default(15).notNull(),
+  mediumCoarseMax: integer("medium_coarse_max").default(22).notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const grindersRelations = relations(grinders, ({ one, many }) => ({
+  household: one(households, {
+    fields: [grinders.householdId],
+    references: [households.id],
+  }),
+  brewLogs: many(brewLogs),
+}));
+
+export const brewPours = pgTable("brew_pours", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  brewLogId: uuid("brew_log_id")
+    .notNull()
+    .references(() => brewLogs.id, { onDelete: "cascade" }),
+  pourNumber: integer("pour_number").notNull(),
+  waterAmount: real("water_amount").notNull(),
+  duration: integer("duration").notNull(),
+  pourType: text("pour_type").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const brewPoursRelations = relations(brewPours, ({ one }) => ({
+  brewLog: one(brewLogs, {
+    fields: [brewPours.brewLogId],
+    references: [brewLogs.id],
   }),
 }));

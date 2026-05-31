@@ -1,30 +1,35 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Coffee, ChevronRight, Loader2 } from "lucide-react";
-import { useLiff } from "../../hooks/useLiff";
+import { Plus, Coffee, ChevronRight, Loader2, Pencil } from "lucide-react";
+import { api } from "@/lib/api";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { OriginFlag } from "../../components/ui/OriginFlag";
+import { getCountryCode } from "@/utils/flag";
+import { CoffeeBeansIcon } from "../../components/ui/CoffeeBeansIcon";
+import { RoastLevelIndicator } from "../../components/ui/RoastLevelIndicator";
 
 interface Bean {
   id: string;
   name: string;
   origin: string | null;
+  purchaseStore: string | null;
   roastLevel: number | null;
   purchaseDate: string | null;
+  isArchived: boolean;
   createdAt: string;
+  processMethod?: string | null;
 }
 
 const BeansList = () => {
   const navigate = useNavigate();
-  const { api } = useLiff();
   const [beans, setBeans] = useState<Bean[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchBeans = async () => {
-      if (!api) return;
       try {
-        const res = await api.beans.$get();
+        const res = await api.api.beans.$get();
         if (res.ok) {
           const data = await res.json();
           setBeans(data as Bean[]);
@@ -37,13 +42,9 @@ const BeansList = () => {
     };
 
     fetchBeans();
-  }, [api]);
+  }, []);
 
-  const getRoastLabel = (level: number | null) => {
-    if (!level) return null;
-    const labels = ["浅煎り", "中浅煎り", "中煎り", "中深煎り", "深煎り"];
-    return labels[level - 1] || "不明";
-  };
+  const activeBeans = beans.filter((bean) => !bean.isArchived);
 
   if (isLoading) {
     return (
@@ -67,7 +68,7 @@ const BeansList = () => {
         </Button>
       </div>
 
-      {beans.length === 0 ? (
+      {activeBeans.length === 0 ? (
         <Card className="border-dashed border-2">
           <CardContent className="p-12 text-center">
             <Coffee className="mx-auto text-coffee-secondary/30 mb-4" size={48} />
@@ -82,37 +83,72 @@ const BeansList = () => {
         </Card>
       ) : (
         <div className="space-y-3">
-          {beans.map((bean) => (
+          {activeBeans.map((bean) => (
             <Card
               key={bean.id}
               className="hover:border-coffee-primary/30 transition-colors cursor-pointer group"
               onClick={() => navigate(`/logs/new?beanId=${bean.id}`)}
             >
               <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-coffee-background p-3 rounded-2xl group-hover:bg-coffee-primary/10 transition-colors">
-                    <Coffee size={24} className="text-coffee-primary" />
+                <div className="flex items-center space-x-4 flex-1 min-w-0">
+                  <div className="bg-coffee-background w-12 h-12 rounded-2xl flex items-center justify-center group-hover:bg-coffee-primary/10 transition-colors flex-shrink-0 overflow-hidden">
+                    {(() => {
+                      const countryCode = getCountryCode(bean.origin);
+                      const isBlend =
+                        !bean.origin ||
+                        bean.origin.toLowerCase().includes("ブレンド") ||
+                        bean.origin.toLowerCase().includes("blend") ||
+                        bean.name.toLowerCase().includes("ブレンド") ||
+                        bean.name.toLowerCase().includes("blend");
+
+                      if (!isBlend && countryCode) {
+                        return <OriginFlag origin={bean.origin} size={24} />;
+                      }
+
+                      return <CoffeeBeansIcon size={24} className="text-coffee-primary" />;
+                    })()}
                   </div>
-                  <div>
-                    <h3 className="font-bold text-coffee-text">{bean.name}</h3>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-coffee-text truncate">{bean.name}</h3>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {bean.origin && (
-                        <span className="text-[10px] text-coffee-secondary bg-coffee-secondary/10 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] text-coffee-secondary bg-coffee-secondary/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <OriginFlag origin={bean.origin} size={10} />
                           {bean.origin}
                         </span>
                       )}
-                      {bean.roastLevel && (
+                      {bean.purchaseStore && (
                         <span className="text-[10px] text-coffee-secondary bg-coffee-secondary/10 px-2 py-0.5 rounded-full">
-                          {getRoastLabel(bean.roastLevel)}
+                          {bean.purchaseStore}
+                        </span>
+                      )}
+                      {bean.processMethod && (
+                        <span className="text-[10px] text-coffee-secondary bg-coffee-secondary/10 px-2 py-0.5 rounded-full">
+                          {bean.processMethod}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-                <ChevronRight
-                  size={18}
-                  className="text-coffee-secondary/40 group-hover:text-coffee-primary transition-colors"
-                />
+                <div className="flex items-center space-x-3 ml-4 flex-shrink-0">
+                  {bean.roastLevel && <RoastLevelIndicator level={bean.roastLevel} />}
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/beans/${bean.id}/edit`);
+                      }}
+                      className="p-2 text-coffee-secondary hover:text-coffee-primary hover:bg-coffee-secondary/10 rounded-full transition-colors"
+                      title="豆を編集"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <ChevronRight
+                      size={18}
+                      className="text-coffee-secondary/40 group-hover:text-coffee-primary transition-colors"
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}

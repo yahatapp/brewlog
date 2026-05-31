@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, Star, Loader2, Plus, Minus } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Save, Star, Plus, Minus } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button, cn } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -15,7 +15,6 @@ interface Bean {
 interface Dripper {
   id: string;
   name: string;
-  isDefault: boolean;
 }
 
 interface Grinder {
@@ -25,33 +24,21 @@ interface Grinder {
   mediumFineMax: number;
   mediumMax: number;
   mediumCoarseMax: number;
-  isDefault: boolean;
 }
 
-const AddLog = () => {
+const EditLog = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [beans, setBeans] = useState<Bean[]>([]);
   const [drippers, setDrippers] = useState<Dripper[]>([]);
   const [grinders, setGrinders] = useState<Grinder[]>([]);
-  const [isFetchingMasters, setIsFetchingMasters] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Helper to get JST today string
-  const getTodayJSTString = () => {
-    const d = new Date();
-    const utc = d.getTime() + d.getTimezoneOffset() * 60000;
-    const jstDate = new Date(utc + 3600000 * 9);
-    const yyyy = jstDate.getFullYear();
-    const mm = String(jstDate.getMonth() + 1).padStart(2, "0");
-    const dd = String(jstDate.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  };
 
   const [formData, setFormData] = useState({
-    beanId: searchParams.get("beanId") || "",
-    brewDate: getTodayJSTString(),
+    beanId: "",
+    brewDate: "",
     dripperId: "",
     grinderId: "",
     grindSize: 10,
@@ -62,7 +49,7 @@ const AddLog = () => {
     note: "",
     tempType: "hot" as "hot" | "ice",
     iceAmount: "" as string | number,
-    yieldAmount: 150 as number | "",
+    yieldAmount: "" as string | number,
     drawdownTime: "" as string | number,
     bloomingTime: "" as string | number,
     hasBypass: false,
@@ -74,13 +61,15 @@ const AddLog = () => {
     }[],
   });
 
+  const [originalData, setOriginalData] = useState<typeof formData | null>(null);
+
   const handleTempTypeChange = (type: "hot" | "ice") => {
     if (type === "ice") {
       setFormData((prev) => ({
         ...prev,
         tempType: "ice",
-        iceAmount: 80,
-        yieldAmount: 200,
+        iceAmount: prev.iceAmount || 80,
+        yieldAmount: prev.yieldAmount || 200,
         beanAmount: prev.beanAmount === 10 ? 16 : prev.beanAmount,
         waterAmount: prev.waterAmount === 150 ? 120 : prev.waterAmount,
       }));
@@ -97,47 +86,78 @@ const AddLog = () => {
   };
 
   useEffect(() => {
-    const fetchMasters = async () => {
+    const fetchData = async () => {
       try {
-        const [beansRes, drippersRes, grindersRes] = await Promise.all([
+        if (!id) return;
+
+        // Fetch masters
+        const [beansRes, drippersRes, grindersRes, logRes] = await Promise.all([
           api.api.beans.$get(),
           api.api.drippers.$get(),
           api.api.grinders.$get(),
+          api.api.logs[":id"].$get({ param: { id } }),
         ]);
 
-        let fetchedDrippers: Dripper[] = [];
-        let fetchedGrinders: Grinder[] = [];
-
         if (beansRes.ok) setBeans((await beansRes.json()) as Bean[]);
-        if (drippersRes.ok) {
-          fetchedDrippers = (await drippersRes.json()) as Dripper[];
-          setDrippers(fetchedDrippers);
-        }
-        if (grindersRes.ok) {
-          fetchedGrinders = (await grindersRes.json()) as Grinder[];
-          setGrinders(fetchedGrinders);
-        }
+        if (drippersRes.ok) setDrippers((await drippersRes.json()) as Dripper[]);
+        if (grindersRes.ok) setGrinders((await grindersRes.json()) as Grinder[]);
 
-        // Auto select default values
-        const defaultDripper = fetchedDrippers.find((d) => d.isDefault);
-        const defaultGrinder = fetchedGrinders.find((g) => g.isDefault);
-
-        setFormData((prev) => ({
-          ...prev,
-          dripperId: defaultDripper ? defaultDripper.id : prev.dripperId,
-          grinderId: defaultGrinder ? defaultGrinder.id : prev.grinderId,
-        }));
+        if (logRes.ok) {
+          const log = await logRes.json();
+          const initialData = {
+            beanId: log.beanId,
+            brewDate:
+              log.brewDate ||
+              (log.createdAt
+                ? new Date(log.createdAt).toISOString().split("T")[0]
+                : new Date().toISOString().split("T")[0]),
+            dripperId: log.dripperId || "",
+            grinderId: log.grinderId || "",
+            grindSize: log.grindSize !== null ? log.grindSize : 10,
+            waterTemp: log.waterTemp !== null ? log.waterTemp : 85,
+            beanAmount: log.beanAmount !== null ? log.beanAmount : 10,
+            waterAmount: log.waterAmount !== null ? log.waterAmount : 150,
+            rating: log.rating !== null ? log.rating : 3,
+            note: log.note || "",
+            tempType: (log.tempType as "hot" | "ice") || "hot",
+            iceAmount: log.iceAmount !== null && log.iceAmount !== undefined ? log.iceAmount : "",
+            yieldAmount:
+              log.yieldAmount !== null && log.yieldAmount !== undefined ? log.yieldAmount : "",
+            drawdownTime:
+              log.drawdownTime !== null && log.drawdownTime !== undefined ? log.drawdownTime : "",
+            bloomingTime:
+              log.bloomingTime !== null && log.bloomingTime !== undefined ? log.bloomingTime : "",
+            hasBypass: (log as any).hasBypass || false,
+            pours:
+              (log.pours as any[])?.map((p) => ({
+                pourNumber: p.pourNumber,
+                waterAmount: p.waterAmount,
+                duration: p.duration,
+                pourType: p.pourType,
+              })) || [],
+          };
+          setFormData(initialData);
+          setOriginalData(initialData);
+        } else {
+          console.error("Log not found");
+          navigate("/logs");
+        }
       } catch (err) {
-        console.error("Failed to fetch masters", err);
+        console.error("Failed to load edit log details", err);
       } finally {
-        setIsFetchingMasters(false);
+        setIsLoading(false);
       }
     };
 
-    fetchMasters();
-  }, []);
+    fetchData();
+  }, [id, navigate]);
 
   const selectedGrinder = grinders.find((g) => g.id === formData.grinderId) || null;
+
+  const isChanged = (key: keyof typeof formData) => {
+    if (!originalData) return false;
+    return formData[key] !== originalData[key];
+  };
 
   const getGrindLabel = (clicks: number, grinder: Grinder | null) => {
     const fm = grinder?.fineMax ?? 6;
@@ -226,10 +246,7 @@ const AddLog = () => {
     e.preventDefault();
     setError(null);
 
-    if (!formData.beanId) {
-      setError("コーヒー豆を選択してください。");
-      return;
-    }
+    if (!id || !formData.beanId) return;
 
     if (!formData.dripperId) {
       setError("ドリッパーを選択してください。");
@@ -280,10 +297,11 @@ const AddLog = () => {
       }
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
 
     try {
-      const res = await api.api.logs.$post({
+      const res = await api.api.logs[":id"].$patch({
+        param: { id },
         json: {
           beanId: formData.beanId,
           method: null,
@@ -322,16 +340,24 @@ const AddLog = () => {
       });
 
       if (res.ok) {
-        navigate("/logs");
+        navigate(`/logs/${id}`);
       } else {
-        console.error("Failed to create log", await res.text());
+        console.error("Failed to update log", await res.text());
       }
     } catch (err) {
-      console.error("Error submitting log", err);
+      console.error("Error submitting updated log", err);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="animate-spin text-coffee-primary" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
@@ -339,7 +365,7 @@ const AddLog = () => {
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
           <ArrowLeft size={20} />
         </Button>
-        <h2 className="text-xl font-bold text-coffee-primary">抽出を記録する</h2>
+        <h2 className="text-xl font-bold text-coffee-primary">抽出記録を編集</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -348,38 +374,27 @@ const AddLog = () => {
             {/* Bean Select */}
             <div className="space-y-2">
               <Label htmlFor="bean">コーヒー豆</Label>
-              {isFetchingMasters ? (
-                <div className="h-10 w-full animate-pulse bg-coffee-secondary/10 rounded-xl" />
-              ) : (
-                <select
-                  id="bean"
-                  className="flex h-10 w-full rounded-xl border border-coffee-secondary/20 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all"
-                  value={formData.beanId}
-                  onChange={(e) => setFormData({ ...formData, beanId: e.target.value })}
-                  required
-                >
-                  <option value="" disabled>
-                    豆を選択してください
+              <select
+                id="bean"
+                className={cn(
+                  "flex h-10 w-full rounded-xl border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all",
+                  isChanged("beanId")
+                    ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                    : "border-coffee-secondary/20",
+                )}
+                value={formData.beanId}
+                onChange={(e) => setFormData({ ...formData, beanId: e.target.value })}
+                required
+              >
+                <option value="" disabled>
+                  豆を選択してください
+                </option>
+                {beans.map((bean) => (
+                  <option key={bean.id} value={bean.id}>
+                    {bean.name}
                   </option>
-                  {beans.map((bean) => (
-                    <option key={bean.id} value={bean.id}>
-                      {bean.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {beans.length === 0 && !isFetchingMasters && (
-                <p className="text-[10px] text-red-500">
-                  豆が登録されていません。{" "}
-                  <button
-                    type="button"
-                    onClick={() => navigate("/beans/new")}
-                    className="underline font-bold ml-1 hover:text-red-700"
-                  >
-                    先に豆を登録してください。
-                  </button>
-                </p>
-              )}
+                ))}
+              </select>
             </div>
 
             {/* Date Select */}
@@ -390,7 +405,12 @@ const AddLog = () => {
                 type="date"
                 value={formData.brewDate}
                 onChange={(e) => setFormData({ ...formData, brewDate: e.target.value })}
-                className="rounded-xl border-coffee-secondary/20"
+                className={cn(
+                  "rounded-xl transition-all",
+                  isChanged("brewDate")
+                    ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                    : "border-coffee-secondary/20",
+                )}
                 required
               />
             </div>
@@ -398,27 +418,28 @@ const AddLog = () => {
             {/* Dripper Selection */}
             <div className="space-y-2">
               <Label htmlFor="dripper">ドリッパー</Label>
-              {isFetchingMasters ? (
-                <div className="h-10 w-full animate-pulse bg-coffee-secondary/10 rounded-xl" />
-              ) : (
-                <select
-                  id="dripper"
-                  className="flex h-10 w-full rounded-xl border border-coffee-secondary/20 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all"
-                  value={formData.dripperId}
-                  onChange={(e) => setFormData({ ...formData, dripperId: e.target.value })}
-                  required
-                >
-                  <option value="" disabled>
-                    ドリッパーを選択してください
+              <select
+                id="dripper"
+                className={cn(
+                  "flex h-10 w-full rounded-xl border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all",
+                  isChanged("dripperId")
+                    ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                    : "border-coffee-secondary/20",
+                )}
+                value={formData.dripperId}
+                onChange={(e) => setFormData({ ...formData, dripperId: e.target.value })}
+                required
+              >
+                <option value="" disabled>
+                  ドリッパーを選択してください
+                </option>
+                {drippers.map((dripper) => (
+                  <option key={dripper.id} value={dripper.id}>
+                    {dripper.name}
                   </option>
-                  {drippers.map((dripper) => (
-                    <option key={dripper.id} value={dripper.id}>
-                      {dripper.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {drippers.length === 0 && !isFetchingMasters && (
+                ))}
+              </select>
+              {drippers.length === 0 && (
                 <p className="text-[10px] text-red-500">
                   ドリッパーが登録されていません。{" "}
                   <button
@@ -435,27 +456,34 @@ const AddLog = () => {
             {/* Grinder Master Selection */}
             <div className="space-y-2">
               <Label htmlFor="grinder">グラインダー</Label>
-              {isFetchingMasters ? (
-                <div className="h-10 w-full animate-pulse bg-coffee-secondary/10 rounded-xl" />
-              ) : (
-                <select
-                  id="grinder"
-                  className="flex h-10 w-full rounded-xl border border-coffee-secondary/20 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all"
-                  value={formData.grinderId}
-                  onChange={(e) => setFormData({ ...formData, grinderId: e.target.value })}
-                >
-                  <option value="">選択してください</option>
-                  {grinders.map((grinder) => (
-                    <option key={grinder.id} value={grinder.id}>
-                      {grinder.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <select
+                id="grinder"
+                className={cn(
+                  "flex h-10 w-full rounded-xl border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all",
+                  isChanged("grinderId")
+                    ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                    : "border-coffee-secondary/20",
+                )}
+                value={formData.grinderId}
+                onChange={(e) => setFormData({ ...formData, grinderId: e.target.value })}
+              >
+                <option value="">選択してください</option>
+                {grinders.map((grinder) => (
+                  <option key={grinder.id} value={grinder.id}>
+                    {grinder.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Grind Click Slider */}
-            <div className="space-y-2 pt-1">
+            <div
+              className={cn(
+                "space-y-2 pt-1 p-2 rounded-xl transition-all duration-300",
+                isChanged("grindSize") &&
+                  "bg-amber-50/5 ring-1 ring-amber-500/30 border border-amber-500/30",
+              )}
+            >
               <div className="flex justify-between items-center">
                 <Label htmlFor="grindSize">
                   挽き目 (クリック数:{" "}
@@ -557,7 +585,13 @@ const AddLog = () => {
             </div>
 
             {/* Hot / Ice temperature toggle */}
-            <div className="space-y-2 pt-1">
+            <div
+              className={cn(
+                "space-y-2 pt-1 p-2 rounded-xl transition-all duration-300",
+                isChanged("tempType") &&
+                  "bg-amber-50/5 ring-1 ring-amber-500/30 border border-amber-500/30",
+              )}
+            >
               <Label>抽出タイプ</Label>
               <div className="grid grid-cols-2 gap-2 bg-coffee-secondary/10 p-1 rounded-2xl">
                 <button
@@ -592,7 +626,13 @@ const AddLog = () => {
             {/* Ice Coffee parameters */}
             {formData.tempType === "ice" && (
               <div className="pt-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="space-y-2">
+                <div
+                  className={cn(
+                    "space-y-2 p-2 rounded-xl transition-all duration-300",
+                    isChanged("iceAmount") &&
+                      "bg-amber-50/5 ring-1 ring-amber-500/30 border border-amber-500/30",
+                  )}
+                >
                   <Label htmlFor="iceAmt" className="text-blue-700 font-medium flex items-center">
                     <span>🧊</span> <span className="ml-1">氷の量 (g)</span>
                   </Label>
@@ -618,7 +658,13 @@ const AddLog = () => {
 
             {/* Temperature, Bean amount, water amount */}
             <div className="grid grid-cols-3 gap-4 pt-1">
-              <div className="space-y-2">
+              <div
+                className={cn(
+                  "space-y-2 p-2 rounded-xl transition-all duration-300",
+                  isChanged("waterTemp") &&
+                    "bg-amber-50/5 ring-1 ring-amber-500/30 border border-amber-500/30",
+                )}
+              >
                 <Label htmlFor="temp">湯温 (℃)</Label>
                 <Input
                   id="temp"
@@ -631,11 +677,22 @@ const AddLog = () => {
                       waterTemp: val === "" ? "" : isNaN(parseInt(val)) ? "" : parseInt(val),
                     });
                   }}
-                  className="rounded-xl border-coffee-secondary/20"
+                  className={cn(
+                    "rounded-xl transition-all",
+                    isChanged("waterTemp")
+                      ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                      : "border-coffee-secondary/20",
+                  )}
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div
+                className={cn(
+                  "space-y-2 p-2 rounded-xl transition-all duration-300",
+                  isChanged("beanAmount") &&
+                    "bg-amber-50/5 ring-1 ring-amber-500/30 border border-amber-500/30",
+                )}
+              >
                 <Label htmlFor="beanAmt">豆量 (g)</Label>
                 <Input
                   id="beanAmt"
@@ -649,11 +706,22 @@ const AddLog = () => {
                       beanAmount: val === "" ? "" : isNaN(parseFloat(val)) ? "" : parseFloat(val),
                     });
                   }}
-                  className="rounded-xl border-coffee-secondary/20"
+                  className={cn(
+                    "rounded-xl transition-all",
+                    isChanged("beanAmount")
+                      ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                      : "border-coffee-secondary/20",
+                  )}
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div
+                className={cn(
+                  "space-y-2 p-2 rounded-xl transition-all duration-300",
+                  isChanged("waterAmount") &&
+                    "bg-amber-50/5 ring-1 ring-amber-500/30 border border-amber-500/30",
+                )}
+              >
                 <Label htmlFor="waterAmt">注水量 (ml)</Label>
                 <Input
                   id="waterAmt"
@@ -668,14 +736,25 @@ const AddLog = () => {
                       yieldAmount: parsed, // Automatically set yieldAmount to the same value
                     }));
                   }}
-                  className="rounded-xl border-coffee-secondary/20"
+                  className={cn(
+                    "rounded-xl transition-all",
+                    isChanged("waterAmount")
+                      ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                      : "border-coffee-secondary/20",
+                  )}
                   required
                 />
               </div>
             </div>
 
             {/* Rating */}
-            <div className="space-y-2 pt-1">
+            <div
+              className={cn(
+                "space-y-2 pt-1 p-2 rounded-xl transition-all duration-300",
+                isChanged("rating") &&
+                  "bg-amber-50/5 ring-1 ring-amber-500/30 border border-amber-500/30",
+              )}
+            >
               <Label>評価</Label>
               <div className="flex items-center space-x-4">
                 {/* Star Adjustment Box */}
@@ -988,17 +1067,32 @@ const AddLog = () => {
               </div>
 
               {/* Yield Amount */}
-              <div className="space-y-2 pt-2 border-t border-coffee-secondary/5">
-                <Label
-                  htmlFor="yieldAmt"
-                  className={cn(
-                    "text-xs font-bold flex items-center",
-                    formData.tempType === "ice" ? "text-blue-700" : "text-coffee-secondary",
+              <div
+                className={cn(
+                  "space-y-2 pt-2 border-t border-coffee-secondary/5 p-2 rounded-xl transition-all duration-300",
+                  isChanged("yieldAmount") &&
+                    "bg-amber-50/5 ring-1 ring-amber-500/30 border border-amber-500/30",
+                )}
+              >
+                <div className="flex justify-between items-center">
+                  <Label
+                    htmlFor="yieldAmt"
+                    className={cn(
+                      "text-xs font-bold flex items-center",
+                      formData.tempType === "ice" ? "text-blue-700" : "text-coffee-secondary",
+                    )}
+                  >
+                    {formData.tempType === "ice" && <span>🥛</span>}
+                    <span className={cn(formData.tempType === "ice" && "ml-1")}>
+                      仕上がり量 (ml)
+                    </span>
+                  </Label>
+                  {isChanged("yieldAmount") && (
+                    <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded-lg border border-amber-200/50">
+                      変更あり
+                    </span>
                   )}
-                >
-                  {formData.tempType === "ice" && <span>🥛</span>}
-                  <span className={cn(formData.tempType === "ice" && "ml-1")}>仕上がり量 (ml)</span>
-                </Label>
+                </div>
                 <Input
                   id="yieldAmt"
                   type="number"
@@ -1014,7 +1108,9 @@ const AddLog = () => {
                     "rounded-xl transition-all duration-300 h-10",
                     formData.tempType === "ice"
                       ? "border-blue-200 focus-visible:ring-blue-500 bg-blue-50/10"
-                      : "border-coffee-secondary/20",
+                      : isChanged("yieldAmount")
+                        ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                        : "border-coffee-secondary/20",
                   )}
                   placeholder={formData.waterAmount ? formData.waterAmount.toString() : "例: 150"}
                   required
@@ -1023,7 +1119,14 @@ const AddLog = () => {
 
               {/* Has Bypass toggle */}
               <div className="space-y-2 pt-2 border-t border-coffee-secondary/5">
-                <Label>加水</Label>
+                <div className="flex justify-between items-center">
+                  <Label>加水</Label>
+                  {isChanged("hasBypass") && (
+                    <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded-lg border border-amber-200/50">
+                      変更あり
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-2 bg-coffee-secondary/10 p-1 rounded-2xl">
                   <button
                     type="button"
@@ -1054,11 +1157,23 @@ const AddLog = () => {
 
               {/* Memo */}
               <div className="space-y-2 pt-2 border-t border-coffee-secondary/5">
-                <Label htmlFor="note">テイスティングノート</Label>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="note">テイスティングノート</Label>
+                  {isChanged("note") && (
+                    <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded-lg border border-amber-200/50">
+                      変更あり
+                    </span>
+                  )}
+                </div>
                 <textarea
                   id="note"
                   rows={3}
-                  className="flex w-full rounded-xl border border-coffee-secondary/20 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all"
+                  className={cn(
+                    "flex w-full rounded-xl border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all",
+                    isChanged("note")
+                      ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/5"
+                      : "border-coffee-secondary/20",
+                  )}
                   placeholder="味の感想など..."
                   value={formData.note}
                   onChange={(e) => setFormData({ ...formData, note: e.target.value })}
@@ -1069,7 +1184,7 @@ const AddLog = () => {
         </Card>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-2xl text-sm font-medium animate-in fade-in">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-2xl text-sm font-medium animate-in fade-in mb-4">
             ⚠️ {error}
           </div>
         )}
@@ -1077,14 +1192,14 @@ const AddLog = () => {
         <Button
           type="submit"
           className="w-full rounded-2xl h-12 text-base shadow-lg bg-coffee-primary hover:bg-coffee-primary/90"
-          disabled={isLoading || beans.length === 0}
+          disabled={isSaving}
         >
-          {isLoading ? (
+          {isSaving ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <>
               <Save size={18} className="mr-2" />
-              記録を保存する
+              変更を保存する
             </>
           )}
         </Button>
@@ -1092,6 +1207,24 @@ const AddLog = () => {
     </div>
   );
 };
+
+const Loader2 = ({ className, size }: { className?: string; size?: number }) => (
+  <svg
+    className={`animate-spin ${className}`}
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+  >
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    />
+  </svg>
+);
 
 const waterAmountOptions = Array.from({ length: (100 - 10) / 5 + 1 }, (_, i) => 10 + i * 5);
 const durationOptions = Array.from({ length: 60 / 5 + 1 }, (_, i) => i * 5);
@@ -1122,4 +1255,4 @@ const renderDurationOptions = (currentVal: number) => {
   ));
 };
 
-export default AddLog;
+export default EditLog;
