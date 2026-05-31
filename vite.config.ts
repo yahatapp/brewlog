@@ -18,9 +18,9 @@ export default defineConfig(({ mode }) => {
     : [];
 
   return {
-    // staged: {
-    //   "*": "vp check --fix",
-    // },
+    staged: {
+      "*": "vp check --fix",
+    },
     plugins: [react(), tailwindcss(), cloudflare()],
     resolve: {
       alias: {
@@ -30,12 +30,6 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       allowedHosts: ["localhost", ...envAllowedHosts],
-      // proxy: {
-      //   "/api": {
-      //     target: "http://localhost:8787",
-      //     changeOrigin: true,
-      //   },
-      // },
     },
   };
 });
