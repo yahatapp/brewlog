@@ -677,23 +677,23 @@ const AddLog = () => {
             {/* Rating */}
             <div className="space-y-2 pt-1">
               <Label>評価</Label>
-              <div className="flex items-center space-x-4">
-                {/* Star Adjustment Box */}
-                <div className="flex items-center space-x-4 bg-coffee-secondary/5 border border-coffee-secondary/10 p-3 rounded-2xl w-fit">
-                  {/* Minus Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextVal = Math.max(1, formData.rating - 0.5);
-                      setFormData({ ...formData, rating: nextVal });
-                    }}
-                    disabled={formData.rating <= 1}
-                    className="flex items-center justify-center w-8 h-8 rounded-xl bg-white border border-coffee-secondary/20 shadow-sm text-coffee-primary active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200"
-                    aria-label="評価下げる"
-                  >
-                    <Minus size={16} />
-                  </button>
+              <div className="flex items-center justify-between bg-coffee-secondary/5 border border-coffee-secondary/10 p-3.5 rounded-2xl w-full shadow-inner">
+                {/* Minus Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = Math.max(1, formData.rating - 0.5);
+                    setFormData({ ...formData, rating: nextVal });
+                  }}
+                  disabled={formData.rating <= 1}
+                  className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-coffee-secondary/20 shadow-sm text-coffee-primary active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200"
+                  aria-label="評価下げる"
+                >
+                  <Minus size={18} />
+                </button>
 
+                {/* Stars and Score Block */}
+                <div className="flex flex-col items-center justify-center px-4 min-w-[130px]">
                   {/* Stars Display */}
                   <div className="flex space-x-1.5">
                     {[1, 2, 3, 4, 5].map((star) => {
@@ -733,28 +733,29 @@ const AddLog = () => {
                     })}
                   </div>
 
-                  {/* Plus Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextVal = Math.min(5, formData.rating + 0.5);
-                      setFormData({ ...formData, rating: nextVal });
-                    }}
-                    disabled={formData.rating >= 5}
-                    className="flex items-center justify-center w-8 h-8 rounded-xl bg-white border border-coffee-secondary/20 shadow-sm text-coffee-primary active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200"
-                    aria-label="評価上げる"
-                  >
-                    <Plus size={16} />
-                  </button>
+                  {/* Score block: numerator and denominator */}
+                  <div className="inline-flex items-baseline mt-1 select-none">
+                    <span className="text-xl font-extrabold text-coffee-primary leading-none">
+                      {formData.rating.toFixed(1)}
+                    </span>
+                    <span className="text-[10px] font-bold text-coffee-secondary/50 mx-0.5">/</span>
+                    <span className="text-[10px] font-bold text-coffee-secondary">5.0</span>
+                  </div>
                 </div>
 
-                {/* Score block: large numerator, small /5.0 horizontally next to it */}
-                <div className="flex items-baseline space-x-0.5 select-none">
-                  <span className="text-3xl font-black text-yellow-600 tracking-tight">
-                    {formData.rating.toFixed(1)}
-                  </span>
-                  <span className="text-xs text-coffee-secondary/40 font-bold">/5.0</span>
-                </div>
+                {/* Plus Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = Math.min(5, formData.rating + 0.5);
+                    setFormData({ ...formData, rating: nextVal });
+                  }}
+                  disabled={formData.rating >= 5}
+                  className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-coffee-secondary/20 shadow-sm text-coffee-primary active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200"
+                  aria-label="評価上げる"
+                >
+                  <Plus size={18} />
+                </button>
               </div>
             </div>
 
