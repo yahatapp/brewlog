@@ -19,6 +19,7 @@ interface BrewLog {
   createdAt: string;
   bean: {
     name: string;
+    version?: string | null;
   };
 }
 
@@ -327,7 +328,14 @@ const LogsList = () => {
               <CardContent className="p-4">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
-                    <h3 className="font-bold text-coffee-text">{log.bean.name}</h3>
+                    <h3 className="font-bold text-coffee-text">
+                      {log.bean.name}
+                      {log.bean.version && (
+                        <span className="text-xs font-normal text-coffee-secondary ml-1.5">
+                          ({log.bean.version})
+                        </span>
+                      )}
+                    </h3>
                     <div className="flex items-center text-xs text-coffee-secondary space-x-2">
                       <span className="flex items-center">
                         <Calendar size={12} className="mr-1" />

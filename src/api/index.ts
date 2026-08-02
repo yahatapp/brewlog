@@ -28,6 +28,8 @@ const createBeanSchema = z.object({
   purchaseDate: z.string().optional().nullable(),
   imageUrl: z.string().optional().nullable(),
   processMethod: z.string().optional().nullable(),
+  parentBeanId: z.string().uuid().optional().nullable(),
+  version: z.string().optional().nullable(),
 });
 
 const updateBeanSchema = z.object({
@@ -39,6 +41,8 @@ const updateBeanSchema = z.object({
   imageUrl: z.string().optional().nullable(),
   isArchived: z.boolean().optional(),
   processMethod: z.string().optional().nullable(),
+  parentBeanId: z.string().uuid().optional().nullable(),
+  version: z.string().optional().nullable(),
 });
 
 const createDripperSchema = z.object({
@@ -206,6 +210,15 @@ const api = app
         orderBy: [desc(beansTable.createdAt)],
       }),
     );
+  })
+  .get("/api/beans/:id", async (c) => {
+    const householdId = await getHouseholdId(c);
+    const db = getDb(c.env.DATABASE_URL);
+    const bean = await db.query.beans.findFirst({
+      where: and(eq(beansTable.id, c.req.param("id")), eq(beansTable.householdId, householdId)),
+    });
+    if (!bean) throw new HTTPException(404, { message: "Bean not found" });
+    return c.json(bean);
   })
   .post("/api/beans", zValidator("json", createBeanSchema), async (c) => {
     const householdId = await getHouseholdId(c);

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "../../components/ui/button";
@@ -23,15 +23,62 @@ const PROCESS_METHODS = [
 
 const AddBean = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const parentBeanId = searchParams.get("parentBeanId");
+  const isVersionMode = !!parentBeanId;
+
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(isVersionMode);
+
+  const todayDate = new Date().toISOString().split("T")[0];
   const [formData, setFormData] = useState({
     name: "",
     origin: "",
     purchaseStore: "",
     roastLevel: 3,
-    purchaseDate: new Date().toISOString().split("T")[0],
+    purchaseDate: todayDate,
     processMethod: "",
+    version: todayDate.replace(/-/g, "."),
   });
+
+  useEffect(() => {
+    if (parentBeanId) {
+      const fetchParentBean = async () => {
+        try {
+          const res = await api.api.beans[":id"].$get({ param: { id: parentBeanId } });
+          if (res.ok) {
+            const data = await res.json();
+            setFormData((prev) => ({
+              ...prev,
+              name: data.name,
+              origin: data.origin || "",
+              purchaseStore: data.purchaseStore || "",
+              roastLevel: data.roastLevel || 3,
+              processMethod: data.processMethod || "",
+            }));
+          }
+        } catch (error) {
+          console.error("Failed to fetch parent bean", error);
+        } finally {
+          setIsFetching(false);
+        }
+      };
+      fetchParentBean();
+    }
+  }, [parentBeanId]);
+
+  // 購入日が変更されたら、versionの初期値も連動して変える（手動変更されていない場合など）
+  const handlePurchaseDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      purchaseDate: newDate,
+      version:
+        prev.version === prev.purchaseDate.replace(/-/g, ".")
+          ? newDate.replace(/-/g, ".")
+          : prev.version,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +93,8 @@ const AddBean = () => {
           roastLevel: formData.roastLevel,
           purchaseDate: formData.purchaseDate || null,
           processMethod: formData.processMethod || null,
+          parentBeanId: parentBeanId || null,
+          version: formData.version || null,
         },
       });
 
@@ -67,13 +116,23 @@ const AddBean = () => {
     return labels[level - 1];
   };
 
+  if (isFetching) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="animate-spin text-coffee-primary" size={32} />
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
       <div className="flex items-center space-x-2">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
           <ArrowLeft size={20} />
         </Button>
-        <h2 className="text-xl font-bold text-coffee-primary">豆を登録する</h2>
+        <h2 className="text-xl font-bold text-coffee-primary">
+          {isVersionMode ? "豆のバージョンを追加" : "豆を登録する"}
+        </h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -88,6 +147,7 @@ const AddBean = () => {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="rounded-xl border-coffee-secondary/20 focus:ring-coffee-primary"
+                disabled={isVersionMode}
               />
             </div>
 
@@ -100,6 +160,7 @@ const AddBean = () => {
                 value={formData.origin}
                 onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
                 className="rounded-xl border-coffee-secondary/20"
+                disabled={isVersionMode}
               />
               <datalist id="origins">
                 {COFFEE_COUNTRIES.map((c) => (
@@ -116,6 +177,7 @@ const AddBean = () => {
                 value={formData.purchaseStore}
                 onChange={(e) => setFormData({ ...formData, purchaseStore: e.target.value })}
                 className="rounded-xl border-coffee-secondary/20"
+                disabled={isVersionMode}
               />
             </div>
 
@@ -126,6 +188,7 @@ const AddBean = () => {
                 className="flex h-10 w-full rounded-xl border border-coffee-secondary/20 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary transition-all text-coffee-text"
                 value={formData.processMethod}
                 onChange={(e) => setFormData({ ...formData, processMethod: e.target.value })}
+                disabled={isVersionMode}
               >
                 <option value="">選択してください (任意)</option>
                 {PROCESS_METHODS.map((m) => (
@@ -150,7 +213,7 @@ const AddBean = () => {
                   min="1"
                   max="5"
                   step="1"
-                  className="w-full h-2 bg-coffee-secondary/20 rounded-lg appearance-none cursor-pointer accent-coffee-primary"
+                  className="w-full h-2 bg-coffee-secondary/20 rounded-lg appearance-none cursor-pointer accent-coffee-primary disabled:opacity-50"
                   value={formData.roastLevel}
                   onChange={(e) =>
                     setFormData({
@@ -158,6 +221,7 @@ const AddBean = () => {
                       roastLevel: parseInt(e.target.value),
                     })
                   }
+                  disabled={isVersionMode}
                 />
                 <div className="flex justify-between mt-2 text-[10px] text-coffee-secondary">
                   <span>浅煎り</span>
@@ -167,14 +231,27 @@ const AddBean = () => {
               </div>
             </div>
 
+            {isVersionMode && (
+              <div className="space-y-2 pt-4 border-t border-coffee-secondary/10">
+                <Label htmlFor="version">バージョン名</Label>
+                <Input
+                  id="version"
+                  required
+                  value={formData.version}
+                  onChange={(e) => setFormData({ ...formData, version: e.target.value })}
+                  className="rounded-xl border-coffee-secondary/20 focus:ring-coffee-primary"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="date">購入日</Label>
               <Input
                 id="date"
                 type="date"
                 value={formData.purchaseDate}
-                onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                className="rounded-xl border-coffee-secondary/20"
+                onChange={handlePurchaseDateChange}
+                className="rounded-xl border-coffee-secondary/20 focus:ring-coffee-primary"
               />
             </div>
           </CardContent>

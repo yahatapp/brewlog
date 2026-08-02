@@ -9,7 +9,9 @@ import { Card, CardContent } from "../../components/ui/card";
 
 interface Bean {
   id: string;
+  parentBeanId?: string | null;
   name: string;
+  createdAt: string;
 }
 
 interface Dripper {
@@ -108,7 +110,39 @@ const AddLog = () => {
         let fetchedDrippers: Dripper[] = [];
         let fetchedGrinders: Grinder[] = [];
 
-        if (beansRes.ok) setBeans((await beansRes.json()) as Bean[]);
+        if (beansRes.ok) {
+          const allBeans = (await beansRes.json()) as Bean[];
+          const groups: Record<string, Bean> = {};
+          allBeans.forEach((bean) => {
+            const groupId = bean.parentBeanId || bean.id;
+            if (!groups[groupId]) {
+              groups[groupId] = bean;
+            } else {
+              if (
+                new Date(bean.createdAt).getTime() > new Date(groups[groupId].createdAt).getTime()
+              ) {
+                groups[groupId] = bean;
+              }
+            }
+          });
+          // ID指定で飛んできた場合のbeanIdがgroupsのlatestに含まれていない可能性があるが、
+          // そのまま全豆リストの中から名前検索などして表示を担保するため、全豆リストを保持しつつ、
+          // optionはgroupsだけ出すか、あるいは対象のbeanは必ず追加するか。
+          // シンプルにgroupsの値だけをリストにする。
+          const uniqueBeans = Object.values(groups).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          );
+
+          // もし param で指定された beanId が uniqueBeans に無ければ追加（古いバージョンの豆からの遷移など）
+          const paramBeanId = searchParams.get("beanId");
+          if (paramBeanId && !uniqueBeans.find((b) => b.id === paramBeanId)) {
+            const paramBean = allBeans.find((b) => b.id === paramBeanId);
+            if (paramBean) uniqueBeans.unshift(paramBean);
+          }
+
+          setBeans(uniqueBeans);
+        }
+
         if (drippersRes.ok) {
           fetchedDrippers = (await drippersRes.json()) as Dripper[];
           setDrippers(fetchedDrippers);
@@ -135,7 +169,7 @@ const AddLog = () => {
     };
 
     fetchMasters();
-  }, []);
+  }, [searchParams]);
 
   const selectedGrinder = grinders.find((g) => g.id === formData.grinderId) || null;
 

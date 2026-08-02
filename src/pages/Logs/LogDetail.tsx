@@ -49,6 +49,7 @@ interface BrewLog {
     name: string;
     origin: string | null;
     processMethod?: string | null;
+    version?: string | null;
   };
   user: {
     displayName: string;
@@ -184,6 +185,11 @@ const LogDetail = () => {
             <div>
               <h3 className="text-lg font-bold text-coffee-primary leading-tight">
                 {log.bean.name}
+                {log.bean.version && (
+                  <span className="text-sm font-normal text-coffee-secondary ml-1.5">
+                    ({log.bean.version})
+                  </span>
+                )}
               </h3>
               <div className="flex flex-col items-start gap-y-1 mt-1.5">
                 {log.bean.origin && (

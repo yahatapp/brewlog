@@ -39,6 +39,8 @@ export const beans = pgTable("beans", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+  parentBeanId: uuid("parent_bean_id").references((): any => beans.id),
+  version: text("version"),
   householdId: uuid("household_id")
     .notNull()
     .references(() => households.id),
@@ -58,6 +60,12 @@ export const beansRelations = relations(beans, ({ one, many }) => ({
     fields: [beans.householdId],
     references: [households.id],
   }),
+  parentBean: one(beans, {
+    fields: [beans.parentBeanId],
+    references: [beans.id],
+    relationName: "beanVersions",
+  }),
+  versions: many(beans, { relationName: "beanVersions" }),
   brewLogs: many(brewLogs),
 }));
 
