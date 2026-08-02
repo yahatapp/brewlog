@@ -83,3 +83,89 @@ Drizzle ORMを使用してスキーマを管理しています。
 - `vp check --fix`: 自動修正
 - `vp build`: 本番用ビルド
 - `pnpm run deploy`: 本番環境（Cloudflare Workers）へのデプロイ
+
+## 🔄 CI/CD (GitHub Actions)
+
+Pull Requestでは`.github/workflows/ci.yml`がNix dev shell内でチェック、テスト、ビルド、
+本番依存関係のセキュリティ監査を実行します。`main`へマージされると
+`.github/workflows/deploy.yml`が同じ環境でリリースを再検証し、Cloudflare Workersへ
+デプロイします。Vite+は両方のworkflowで`v0.2.7`に固定されています。
+
+ローカルでCI相当の検証を行う場合は、次を実行してください。
+
+```bash
+nix develop --command ./scripts/setup-vp.sh
+nix develop --command pnpm install --frozen-lockfile
+nix develop --command pnpm run check
+nix develop --command pnpm test
+nix develop --command pnpm run build
+nix develop --command pnpm audit --prod --audit-level high
+```
+
+### GitHub EnvironmentとCloudflareの設定
+
+1. GitHubの **Settings → Environments** で`production`を作成します。
+2. `production`のEnvironment secretsへ次を登録します。
+   - `CLOUDFLARE_API_TOKEN`: 下記の最小権限で作成したAPI token
+   - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID
+3. **Settings → Secrets and variables → Actions → Variables**へ`VITE_LIFF_ID`を登録します。
+   `VITE_`変数はブラウザ向けbundleへ埋め込まれるため、秘密情報は設定しないでください。
+4. Workerの実行時secretはGitHubへ渡さず、初回デプロイ前にローカルから登録します。
+
+```bash
+pnpm exec wrangler secret put DATABASE_URL
+pnpm exec wrangler secret put LINE_CHANNEL_ID
+pnpm exec wrangler secret put ALLOWED_LINE_USER_IDS
+```
+
+#### Cloudflare Account API tokenの最小権限
+
+個人プロフィールに紐づくGlobal API KeyやUser API tokenではなく、デプロイ先アカウントが
+所有する**Account API token**を使用します。Cloudflare Dashboardでデプロイ先アカウントを
+選択し、**Manage Account → Account API Tokens → Create Token**から作成してください。
+
+| 設定        | 値                                            |
+| ----------- | --------------------------------------------- |
+| Token name  | `brewlog-github-actions-deploy`など任意の名前 |
+| Permissions | **Account → Workers Scripts → Edit**          |
+
+このリポジトリの`wrangler.jsonc`はWorkers RoutesやKV、R2、D1を使用していないため、
+現在の`wrangler deploy`にZone権限や各ストレージ製品の権限は不要です。Account API tokenは
+作成元アカウントに紐づきます。`Workers Scripts:Edit`はそのアカウント内のWorkerに対する
+権限であり、特定のWorker名だけには限定できません。
+
+作成したtokenを`production` Environmentの`CLOUDFLARE_API_TOKEN`へ、そのアカウントIDを
+`CLOUDFLARE_ACCOUNT_ID`へ登録します。token自体は表示時に一度だけコピーし、リポジトリや
+ログへ保存しないでください。登録後は、ローカルで環境変数を設定して次のコマンドを実行すると、
+Wranglerが`Account API Token`として認識していることを確認できます。
+
+```bash
+pnpm exec wrangler whoami
+```
+
+Account API tokenは個人ユーザーの所属状態に依存しないため、CI/CDのような機械アクセスに
+適しています。Global API Key、Cloudflareメールアドレス、`CLOUDFLARE_API_KEY`はGitHubへ
+登録しません。
+
+将来、独自ドメインのrouteをworkflowから変更する場合はZoneの`Workers Routes:Edit`を、
+KV、R2、D1などをworkflowから操作する場合は対象サービスの権限をその時点で追加してください。
+DBマイグレーションはCDに含めていないため、Supabaseの認証情報もこのtokenには不要です。
+
+### `main`のbranch protection
+
+workflowファイルだけでは、失敗したCIを無視したマージを防止できません。GitHubの
+**Settings → Rules → Rulesets**で`main`を対象とするrulesetを作成し、次を設定してください。
+
+1. Pull Requestを必須にします。
+2. required status checksを有効化し、`CI / Verify`を必須にします。
+3. マージ前にbranchが最新であることと、conversationの解決を必須にします。
+4. force pushとbranch削除を禁止します。
+
+branch protectionはGitHubリポジトリ管理者権限が必要なサーバー側設定のため、
+リポジトリ内のファイル追加だけでは有効になりません。
+
+### デプロイとDBマイグレーション
+
+デプロイは`main`へのpush時、またはActions画面からの手動実行時に開始します。同時に
+複数の本番デプロイが走らないよう`production` concurrency groupを使用しています。
+DBマイグレーションは本番DBを変更するため、自動デプロイには含めていません。
