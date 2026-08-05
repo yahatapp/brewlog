@@ -26,10 +26,12 @@
             nodejs_24
             git
             pnpm
+            curl
           ];
 
           shellHook = ''
             export PATH="$PWD/node_modules/.bin:$PATH"
+            export PATH="''${VP_HOME:-$HOME/.vite-plus}/bin:$PATH"
             echo "☕ Brewlog Dev Environment"
             echo "Node.js: $(node --version)"
             echo "pnpm: $(pnpm --version)"

@@ -21,7 +21,12 @@ export default defineConfig(({ mode }) => {
     staged: {
       "*": "vp check --fix",
     },
-    plugins: [react(), tailwindcss(), cloudflare()],
+    // Vitest runs in a regular Node environment. The Cloudflare plugin rejects
+    // Vitest's Node externals, so only load it for development and builds.
+    plugins: [react(), tailwindcss(), ...(mode === "test" ? [] : [cloudflare()])],
+    test: {
+      globals: true,
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
