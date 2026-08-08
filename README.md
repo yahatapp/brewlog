@@ -136,9 +136,13 @@ nix develop --command pnpm audit --prod --audit-level high
 2. `production`のEnvironment secretsへ次を登録します。
    - `CLOUDFLARE_API_TOKEN`: 下記の最小権限で作成したAPI token
    - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID
+   - `DATABASE_URL`: マイグレーション対象となる本番Supabase PostgreSQLの接続URL
 3. **Settings → Secrets and variables → Actions → Variables**へ`VITE_LIFF_ID`を登録します。
    `VITE_`変数はブラウザ向けbundleへ埋め込まれるため、秘密情報は設定しないでください。
-4. Workerの実行時secretはGitHubへ渡さず、初回デプロイ前にローカルから登録します。
+4. Workerの実行時secretは初回デプロイ前にローカルから登録します。GitHub Actionsが
+   マイグレーションに使用するEnvironment secretとWorkerの実行時secretは別管理のため、
+   `DATABASE_URL`は同じ値を両方へ登録してください。その他の実行時secretはGitHubへ
+   渡す必要はありません。
 
 ```bash
 pnpm exec wrangler secret put DATABASE_URL
