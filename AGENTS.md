@@ -1,6 +1,6 @@
-# GEMINI.md
+# AGENTS.md
 
-Persistent context and project guidelines for Gemini Code in Brewlog.
+Persistent context and project guidelines for coding agents working on Brewlog.
 
 ## Project Overview
 
@@ -10,9 +10,9 @@ Persistent context and project guidelines for Gemini Code in Brewlog.
 - **Environment:** Managed via Nix (`flake.nix`) and `direnv`. Ensure you run `direnv allow` and track changes in Git.
 - **Reference Docs:**
   - Hono Standard: https://hono.dev/llms.txt
-  - Tech Stack Decisions: @docs/tech-stack.md
-  - Custom Authentication: @docs/auth-flow.md
-  - Database Schema: @docs/database-design.md
+  - Project Setup: @README.md
+  - Custom Authentication: @src/api/middleware/auth.ts
+  - Database Schema: @db/schema.ts
 
 ---
 
@@ -33,6 +33,8 @@ Persistent context and project guidelines for Gemini Code in Brewlog.
 - **Lint / Format / Typecheck:** `vp check`
 - **Auto-fix issues:** `vp check --fix`
 - **Run tests:** `vp test`
+- **Full agent guard:** `pnpm run guard:agent`
+- **Secret scan:** `pnpm run guard:secrets`
 
 ### Database (Drizzle ORM)
 
@@ -60,26 +62,32 @@ Persistent context and project guidelines for Gemini Code in Brewlog.
 ### 1. Type Safety & API Design
 
 - **100% TypeScript:** Never use `any` or bypass type-safety rules.
-- **Hono RPC:** Always use shared Hono `AppType` to achieve end-to-end type safety between frontend client and backend Hono routes.
 
-### 2. Styling & UI Framework
+### 2. UI Design System
 
-- **shadcn/ui + Base UI:** Always prioritize modern Base UI primitives combined with Tailwind CSS. Avoid standard Radix-based shadcn components if Base UI alternatives exist.
-- **Aesthetics & Premium Design:** Follow premium web design guidelines. Use vibrant HSL colors, smooth transitions, glassmorphic touches, and custom typography. Avoid basic/default styling.
+- Use [Google Material Design 3](https://m3.material.io/) as the primary visual and interaction style guide.
+- Preserve Brewlog's warm coffee-colored tonal palette and calm, lightweight character.
+- Follow Material 3 guidance for semantic color roles, typography, shape, elevation, component states, navigation, touch targets, and accessibility.
+- Prefer rounded cards, pill-shaped actions, tonal containers, and icon-plus-label bottom navigation where they suit the interaction.
+- Treat Material 3 Expressive features as optional. Do not introduce exaggerated motion, typography, or shapes that conflict with Brewlog's calm character.
+- Build UI with Tailwind CSS and modern Base UI primitives. Use shadcn/ui patterns where useful, but prefer Base UI alternatives over Radix primitives when both are available.
+- Do not add Material UI or another component library solely to imitate Material 3; apply the design principles through the existing stack.
+- Use smooth, purposeful transitions and restrained glassmorphic touches. Avoid effects that weaken hierarchy or usability.
+- Preserve visible focus states, sufficient color contrast, readable type sizes, and touch-friendly interactive areas.
+- Also comply with LINE LIFF and LINE MINI App UX requirements where applicable.
 
 ### 3. Formatting & Linting
 
 - **Strict Formatting:** Run `vp check --fix` automatically after every code change. Ensure there are no type errors, lint warnings, or formatting issues before finishing your task.
 - **Oxc Rules:** Strictly follow Oxc-based rules integrated in `Vite+` (`vp`).
-- **Automatic Exit Hooks:** A `Stop` lifecycle hook is configured in [.agents/hooks.json](file:///Users/kenya/Documents/application/brewlog/.agents/hooks.json) to automatically run `pnpm run check:fix` upon agent session termination (the `Stop` hook). Nevertheless, proactively run `vp check --fix` manually to ensure correctness during development.
+- **Security Rules:** Keep the explicit security-oriented Oxlint rules in `vite.config.ts` enabled. Do not use inline disables or unsafe type escapes to bypass them.
+- **Automatic Exit Hooks:** A `Stop` lifecycle hook is configured in [`.agents/hooks.json`](.agents/hooks.json) to automatically run `pnpm run guard:agent` upon agent session termination (the `Stop` hook). Nevertheless, proactively run `vp check --fix` after edits and `pnpm run guard:agent` before finishing.
 
 ---
 
 ## Critical Rules & "Do Nots" (Common Pitfalls)
 
 - 🚫 **DO NOT** commit `.env`, `.dev.vars`, or any secrets/keys to Git.
+- 🚫 **DO NOT** skip or disable Gitleaks, the Gitleaks canary, or the agent change guard.
 - 🚫 **DO NOT** use `npm` or `yarn` for package management; only use `pnpm`.
 - 🚫 **DO NOT** bypass `vp check` — ensure the toolchain passes completely before finalizing any feature. Explicitly run `vp check --fix` after editing files.
-- 🚫 **DO NOT** use standard Supabase Auth client-side signup/login. Authentication must strictly leverage LINE LIFF ID Token verification + backend Allowlist matching (see `docs/auth-flow.md`).
-- 🚫 **DO NOT** make database schema changes without updating Drizzle files under `db/` and generating/running migrations via `pnpm run db:generate` and `pnpm run db:migrate` (see `docs/database-design.md`).
-- 🚫 **DO NOT** write verbose or bloated components. Keep them modular, reusable, and structured logically.

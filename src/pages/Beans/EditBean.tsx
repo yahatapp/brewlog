@@ -69,7 +69,7 @@ const EditBean = () => {
             });
           } else {
             console.error("Bean not found");
-            navigate("/beans");
+            void navigate("/beans");
           }
         }
       } catch (err) {
@@ -79,7 +79,7 @@ const EditBean = () => {
       }
     };
 
-    fetchBean();
+    void fetchBean();
   }, [id, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,7 +103,7 @@ const EditBean = () => {
       });
 
       if (res.ok) {
-        navigate("/beans");
+        void navigate("/beans");
       } else {
         const errorData = await res.text();
         console.error("Failed to update bean", errorData);

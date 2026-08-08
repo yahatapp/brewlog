@@ -33,8 +33,8 @@ const Settings = () => {
         api.api.grinders.$get(),
       ]);
 
-      if (drippersRes.ok) setDrippers((await drippersRes.json()) as Dripper[]);
-      if (grindersRes.ok) setGrinders((await grindersRes.json()) as Grinder[]);
+      if (drippersRes.ok) setDrippers(await drippersRes.json());
+      if (grindersRes.ok) setGrinders(await grindersRes.json());
     } catch (err) {
       console.error("Failed to fetch equipment settings", err);
     } finally {
@@ -43,7 +43,7 @@ const Settings = () => {
   };
 
   useEffect(() => {
-    fetchEquipment();
+    void fetchEquipment();
   }, []);
 
   const handleLogout = () => {

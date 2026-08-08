@@ -110,8 +110,8 @@ export const LiffProvider = ({ children }: { children: ReactNode }) => {
 
             if (res.ok) {
               const data = await res.json();
-              setBackendProfile(data.profile as BackendProfile);
-              setHousehold(data.household as Household);
+              setBackendProfile(data.profile);
+              setHousehold(data.household);
             } else {
               console.error("Backend init failed", res.status, await res.text());
               if (res.status === 401) {
@@ -130,15 +130,15 @@ export const LiffProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setIsLoggedIn(false);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("LIFF init error", err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : "LIFFの初期化に失敗しました。");
       } finally {
         setIsLoading(false);
       }
     };
 
-    initLiff();
+    void initLiff();
   }, []);
 
   return (

@@ -37,7 +37,7 @@ const LogsList = () => {
         const res = await api.api.logs.$get();
         if (res.ok) {
           const data = await res.json();
-          setLogs(data as unknown as BrewLog[]);
+          setLogs(data);
         }
       } catch (err) {
         console.error("Failed to fetch logs", err);
@@ -46,7 +46,7 @@ const LogsList = () => {
       }
     };
 
-    fetchLogs();
+    void fetchLogs();
   }, []);
 
   const formatDate = (log: BrewLog) => {
@@ -79,7 +79,7 @@ const LogsList = () => {
     return new Date(log.createdAt).getTime();
   };
 
-  const sortedLogs = [...filteredLogs].sort((a, b) => {
+  const sortedLogs = [...filteredLogs].toSorted((a, b) => {
     if (sortBy === "date") {
       const dateA = getLogTimestamp(a);
       const dateB = getLogTimestamp(b);

@@ -1,7 +1,10 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, date, real } from "drizzle-orm/pg-core";
+import { pgSchema, text, uuid, timestamp, integer, boolean, date, real } from "drizzle-orm/pg-core";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
-export const households = pgTable("households", {
+export const brewlogSchema = pgSchema("brewlog");
+
+export const households = brewlogSchema.table("households", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
@@ -17,7 +20,7 @@ export const householdsRelations = relations(households, ({ many }) => ({
   grinders: many(grinders),
 }));
 
-export const profiles = pgTable("profiles", {
+export const profiles = brewlogSchema.table("profiles", {
   lineUserId: text("line_user_id").primaryKey(),
   householdId: uuid("household_id")
     .notNull()
@@ -35,11 +38,11 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
   brewLogs: many(brewLogs),
 }));
 
-export const beans = pgTable("beans", {
+export const beans = brewlogSchema.table("beans", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  parentBeanId: uuid("parent_bean_id").references((): any => beans.id),
+  parentBeanId: uuid("parent_bean_id").references((): AnyPgColumn => beans.id),
   version: text("version"),
   householdId: uuid("household_id")
     .notNull()
@@ -70,7 +73,7 @@ export const beansRelations = relations(beans, ({ one, many }) => ({
   brewLogs: many(brewLogs),
 }));
 
-export const brewLogs = pgTable("brew_logs", {
+export const brewLogs = brewlogSchema.table("brew_logs", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
@@ -126,7 +129,7 @@ export const brewLogsRelations = relations(brewLogs, ({ one, many }) => ({
   pours: many(brewPours),
 }));
 
-export const drippers = pgTable("drippers", {
+export const drippers = brewlogSchema.table("drippers", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
@@ -146,7 +149,7 @@ export const drippersRelations = relations(drippers, ({ one, many }) => ({
   brewLogs: many(brewLogs),
 }));
 
-export const grinders = pgTable("grinders", {
+export const grinders = brewlogSchema.table("grinders", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
@@ -170,7 +173,7 @@ export const grindersRelations = relations(grinders, ({ one, many }) => ({
   brewLogs: many(brewLogs),
 }));
 
-export const brewPours = pgTable("brew_pours", {
+export const brewPours = brewlogSchema.table("brew_pours", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),

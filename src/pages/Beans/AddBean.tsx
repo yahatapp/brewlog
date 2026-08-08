@@ -64,7 +64,7 @@ const AddBean = () => {
           setIsFetching(false);
         }
       };
-      fetchParentBean();
+      void fetchParentBean();
     }
   }, [parentBeanId]);
 
@@ -101,7 +101,7 @@ const AddBean = () => {
       });
 
       if (res.ok) {
-        navigate("/beans");
+        void navigate("/beans");
       } else {
         const errorData = await res.text();
         console.error("Failed to create bean", errorData);

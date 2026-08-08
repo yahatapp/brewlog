@@ -40,7 +40,7 @@ const Home = () => {
       }
     };
 
-    fetchRecentLogs();
+    void fetchRecentLogs();
   }, []);
 
   const formatDate = (dateStr: string) => {

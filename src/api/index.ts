@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { getDb } from "./db";
 import { authMiddleware } from "./middleware/auth";
 import { zValidator } from "@hono/zod-validator";
@@ -14,6 +15,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
+import type { Env } from "./types";
 
 const initSchema = z.object({
   displayName: z.string(),
@@ -135,17 +137,7 @@ const updateLogSchema = z.object({
     .optional(),
 });
 
-type Bindings = {
-  DATABASE_URL: string;
-  LINE_CHANNEL_ID: string;
-  ALLOWED_LINE_USER_IDS: string;
-};
-
-type Variables = {
-  lineUserId: string;
-};
-
-const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+const app = new Hono<Env>();
 
 // Apply authentication middleware to all routes
 app.use("/*", authMiddleware);
@@ -153,7 +145,7 @@ app.use("/*", authMiddleware);
 // Generate a basePath router for /api
 
 // Helper to get householdId
-async function getHouseholdId(c: any) {
+async function getHouseholdId(c: Context<Env>) {
   const lineUserId = c.get("lineUserId");
   const db = getDb(c.env.DATABASE_URL);
   const profile = await db.query.profiles.findFirst({

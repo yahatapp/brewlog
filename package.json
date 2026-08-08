@@ -8,6 +8,10 @@
     "build": "vp build",
     "check": "vp check",
     "check:fix": "vp check --fix",
+    "guard:agent": "pnpm run check:fix && pnpm run guard:changes",
+    "guard:changes": "./scripts/guard-changes.sh",
+    "guard:gitleaks-canary": "./scripts/check-gitleaks-canary.sh",
+    "guard:secrets": "gitleaks dir --no-banner --redact .",
     "test": "vp test",
     "deploy": "pnpm run build && wrangler deploy",
     "db:generate": "drizzle-kit generate",
@@ -40,16 +44,19 @@
     "@vitejs/plugin-react": "^6.0.0",
     "autoprefixer": "^10.4.19",
     "drizzle-kit": "^0.31.10",
+    "lefthook": "2.1.10",
     "postcss": "^8.4.38",
     "tailwindcss": "^4.0.0",
     "typescript": "^6.0.0",
     "vite": "^8.0.0",
+    "vitest": "4.1.10",
     "wrangler": "^4.92.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "workerd",
       "esbuild",
+      "lefthook",
       "sharp"
     ],
     "overrides": {

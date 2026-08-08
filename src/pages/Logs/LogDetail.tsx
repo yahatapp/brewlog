@@ -83,7 +83,7 @@ const LogDetail = () => {
           setLog(data as unknown as BrewLog);
         } else {
           console.error("Log not found");
-          navigate("/logs");
+          void navigate("/logs");
         }
       } catch (err) {
         console.error("Failed to fetch log detail", err);
@@ -92,7 +92,7 @@ const LogDetail = () => {
       }
     };
 
-    fetchLog();
+    void fetchLog();
   }, [id, navigate]);
 
   const formatDate = (dateStr: string) => {
