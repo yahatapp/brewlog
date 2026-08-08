@@ -36,6 +36,7 @@ const AddBean = () => {
     origin: "",
     purchaseStore: "",
     roastLevel: 3,
+    roastDate: "",
     purchaseDate: todayDate,
     processMethod: "",
     version: todayDate.replace(/-/g, "."),
@@ -91,6 +92,7 @@ const AddBean = () => {
           origin: formData.origin || null,
           purchaseStore: formData.purchaseStore || null,
           roastLevel: formData.roastLevel,
+          roastDate: formData.roastDate || null,
           purchaseDate: formData.purchaseDate || null,
           processMethod: formData.processMethod || null,
           parentBeanId: parentBeanId || null,
@@ -243,6 +245,17 @@ const AddBean = () => {
                 />
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="roastDate">焙煎日</Label>
+              <Input
+                id="roastDate"
+                type="date"
+                value={formData.roastDate}
+                onChange={(e) => setFormData({ ...formData, roastDate: e.target.value })}
+                className="rounded-xl border-coffee-secondary/20 focus:ring-coffee-primary"
+              />
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="date">購入日</Label>
