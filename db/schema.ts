@@ -48,6 +48,7 @@ export const beans = pgTable("beans", {
   origin: text("origin"),
   purchaseStore: text("purchase_store"),
   roastLevel: integer("roast_level"), // 1:浅煎り 〜 5:深煎り 等
+  roastDate: date("roast_date"),
   purchaseDate: date("purchase_date"),
   imageUrl: text("image_url"),
   processMethod: text("process_method"),
