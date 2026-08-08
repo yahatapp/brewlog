@@ -17,19 +17,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v21
+        uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
 
       - name: Cache Nix store
-        uses: DeterminateSystems/magic-nix-cache-action@v13
+        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
 
       - name: Install pinned Vite+
         run: nix develop --command ./scripts/setup-vp.sh
 
       - name: Install dependencies
         run: nix develop --command pnpm install --frozen-lockfile
+
+      - name: Verify secret scanner
+        run: nix develop --command pnpm run guard:gitleaks-canary
+
+      - name: Scan working tree for secrets
+        run: nix develop --command pnpm run guard:secrets
 
       - name: Check formatting, lint, and types
         run: nix develop --command pnpm run check

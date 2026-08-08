@@ -42,7 +42,7 @@ const BeansList = () => {
         const res = await api.api.beans.$get();
         if (res.ok) {
           const data = await res.json();
-          setBeans(data as Bean[]);
+          setBeans(data);
         }
       } catch (err) {
         console.error("Failed to fetch beans", err);
@@ -51,7 +51,7 @@ const BeansList = () => {
       }
     };
 
-    fetchBeans();
+    void fetchBeans();
   }, []);
 
   const activeBeans = beans.filter((bean) => !bean.isArchived);
@@ -66,7 +66,7 @@ const BeansList = () => {
 
     return Object.entries(groups)
       .map(([groupId, groupBeans]) => {
-        const sorted = [...groupBeans].sort(
+        const sorted = [...groupBeans].toSorted(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
         return {
@@ -76,7 +76,7 @@ const BeansList = () => {
           versionCount: sorted.length,
         };
       })
-      .sort(
+      .toSorted(
         (a, b) =>
           new Date(b.latestBean.createdAt).getTime() - new Date(a.latestBean.createdAt).getTime(),
       );
@@ -187,7 +187,7 @@ const BeansList = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/beans/${latestBean.id}/edit`);
+                          void navigate(`/beans/${latestBean.id}/edit`);
                         }}
                         className="p-2 text-coffee-secondary hover:text-coffee-primary hover:bg-coffee-secondary/10 rounded-full transition-colors"
                         title="最新の豆を編集"

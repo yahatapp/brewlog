@@ -38,7 +38,7 @@ const Drippers = () => {
     try {
       const res = await api.api.drippers.$get();
       if (res.ok) {
-        setDrippers((await res.json()) as Dripper[]);
+        setDrippers(await res.json());
       }
     } catch (err) {
       console.error("Failed to fetch drippers", err);
@@ -48,7 +48,7 @@ const Drippers = () => {
   };
 
   useEffect(() => {
-    fetchDrippers();
+    void fetchDrippers();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

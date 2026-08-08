@@ -30,6 +30,18 @@ interface Grinder {
   isDefault: boolean;
 }
 
+interface Pour {
+  pourNumber: number;
+  waterAmount: number;
+  duration: number;
+  pourType: "all" | "center_around" | "center_only";
+}
+
+const parsePourType = (value: string): Pour["pourType"] => {
+  if (value === "center_around" || value === "center_only") return value;
+  return "all";
+};
+
 const AddLog = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -68,12 +80,7 @@ const AddLog = () => {
     drawdownTime: "" as string | number,
     bloomingTime: "" as string | number,
     hasBypass: false,
-    pours: [] as {
-      pourNumber: number;
-      waterAmount: number;
-      duration: number;
-      pourType: "all" | "center_around" | "center_only";
-    }[],
+    pours: [] as Pour[],
   });
 
   const handleTempTypeChange = (type: "hot" | "ice") => {
@@ -129,7 +136,7 @@ const AddLog = () => {
           // そのまま全豆リストの中から名前検索などして表示を担保するため、全豆リストを保持しつつ、
           // optionはgroupsだけ出すか、あるいは対象のbeanは必ず追加するか。
           // シンプルにgroupsの値だけをリストにする。
-          const uniqueBeans = Object.values(groups).sort(
+          const uniqueBeans = Object.values(groups).toSorted(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
 
@@ -144,11 +151,11 @@ const AddLog = () => {
         }
 
         if (drippersRes.ok) {
-          fetchedDrippers = (await drippersRes.json()) as Dripper[];
+          fetchedDrippers = await drippersRes.json();
           setDrippers(fetchedDrippers);
         }
         if (grindersRes.ok) {
-          fetchedGrinders = (await grindersRes.json()) as Grinder[];
+          fetchedGrinders = await grindersRes.json();
           setGrinders(fetchedGrinders);
         }
 
@@ -168,7 +175,7 @@ const AddLog = () => {
       }
     };
 
-    fetchMasters();
+    void fetchMasters();
   }, [searchParams]);
 
   const selectedGrinder = grinders.find((g) => g.id === formData.grinderId) || null;
@@ -218,7 +225,7 @@ const AddLog = () => {
     });
   };
 
-  const handlePourChange = (index: number, key: string, value: any) => {
+  const handlePourChange = <Key extends keyof Pour>(index: number, key: Key, value: Pour[Key]) => {
     setFormData((prev) => {
       const updatedPours = [...prev.pours];
       updatedPours[index] = {
@@ -227,7 +234,7 @@ const AddLog = () => {
       };
 
       let nextBloomingTime = prev.bloomingTime;
-      if (index === 0 && key === "duration") {
+      if (index === 0 && key === "duration" && typeof value === "number") {
         nextBloomingTime = value;
       }
 
@@ -334,10 +341,7 @@ const AddLog = () => {
           hasBypass: formData.hasBypass,
           iceAmount:
             formData.tempType === "ice" ? parseFloat(formData.iceAmount.toString()) || null : null,
-          yieldAmount:
-            formData.yieldAmount !== ""
-              ? parseFloat(formData.yieldAmount.toString()) || null
-              : null,
+          yieldAmount: formData.yieldAmount || null,
           drawdownTime:
             formData.drawdownTime !== ""
               ? parseInt(formData.drawdownTime.toString()) || null
@@ -356,7 +360,7 @@ const AddLog = () => {
       });
 
       if (res.ok) {
-        navigate("/logs");
+        void navigate("/logs");
       } else {
         console.error("Failed to create log", await res.text());
       }
@@ -930,7 +934,7 @@ const AddLog = () => {
                         <select
                           value={pour.pourType}
                           onChange={(e) =>
-                            handlePourChange(index, "pourType", e.target.value as any)
+                            handlePourChange(index, "pourType", parsePourType(e.target.value))
                           }
                           className="h-8 rounded-lg border border-coffee-secondary/20 bg-white px-1 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-coffee-primary transition-all w-20 text-coffee-text font-medium text-center"
                         >

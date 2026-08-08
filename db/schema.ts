@@ -1,4 +1,5 @@
 import { pgSchema, text, uuid, timestamp, integer, boolean, date, real } from "drizzle-orm/pg-core";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
 export const brewlogSchema = pgSchema("brewlog");
@@ -41,7 +42,7 @@ export const beans = brewlogSchema.table("beans", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  parentBeanId: uuid("parent_bean_id").references((): any => beans.id),
+  parentBeanId: uuid("parent_bean_id").references((): AnyPgColumn => beans.id),
   version: text("version"),
   householdId: uuid("household_id")
     .notNull()

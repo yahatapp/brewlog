@@ -33,6 +33,8 @@ Persistent context and project guidelines for coding agents working on Brewlog.
 - **Lint / Format / Typecheck:** `vp check`
 - **Auto-fix issues:** `vp check --fix`
 - **Run tests:** `vp test`
+- **Full agent guard:** `pnpm run guard:agent`
+- **Secret scan:** `pnpm run guard:secrets`
 
 ### Database (Drizzle ORM)
 
@@ -78,12 +80,14 @@ Persistent context and project guidelines for coding agents working on Brewlog.
 
 - **Strict Formatting:** Run `vp check --fix` automatically after every code change. Ensure there are no type errors, lint warnings, or formatting issues before finishing your task.
 - **Oxc Rules:** Strictly follow Oxc-based rules integrated in `Vite+` (`vp`).
-- **Automatic Exit Hooks:** A `Stop` lifecycle hook is configured in [`.agents/hooks.json`](.agents/hooks.json) to automatically run `pnpm run check:fix` upon agent session termination (the `Stop` hook). Nevertheless, proactively run `vp check --fix` manually to ensure correctness during development.
+- **Security Rules:** Keep the explicit security-oriented Oxlint rules in `vite.config.ts` enabled. Do not use inline disables or unsafe type escapes to bypass them.
+- **Automatic Exit Hooks:** A `Stop` lifecycle hook is configured in [`.agents/hooks.json`](.agents/hooks.json) to automatically run `pnpm run guard:agent` upon agent session termination (the `Stop` hook). Nevertheless, proactively run `vp check --fix` after edits and `pnpm run guard:agent` before finishing.
 
 ---
 
 ## Critical Rules & "Do Nots" (Common Pitfalls)
 
 - 🚫 **DO NOT** commit `.env`, `.dev.vars`, or any secrets/keys to Git.
+- 🚫 **DO NOT** skip or disable Gitleaks, the Gitleaks canary, or the agent change guard.
 - 🚫 **DO NOT** use `npm` or `yarn` for package management; only use `pnpm`.
 - 🚫 **DO NOT** bypass `vp check` — ensure the toolchain passes completely before finalizing any feature. Explicitly run `vp check --fix` after editing files.

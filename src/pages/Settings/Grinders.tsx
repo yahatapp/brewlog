@@ -38,7 +38,7 @@ const Grinders = () => {
     try {
       const res = await api.api.grinders.$get();
       if (res.ok) {
-        setGrinders((await res.json()) as Grinder[]);
+        setGrinders(await res.json());
       }
     } catch (err) {
       console.error("Failed to fetch grinders", err);
@@ -48,7 +48,7 @@ const Grinders = () => {
   };
 
   useEffect(() => {
-    fetchGrinders();
+    void fetchGrinders();
   }, []);
 
   const handleStartEdit = (grinder: Grinder) => {

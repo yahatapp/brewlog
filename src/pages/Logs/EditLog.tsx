@@ -26,6 +26,20 @@ interface Grinder {
   mediumCoarseMax: number;
 }
 
+interface Pour {
+  pourNumber: number;
+  waterAmount: number;
+  duration: number;
+  pourType: "all" | "center_around" | "center_only";
+}
+
+const parseTempType = (value: string): "hot" | "ice" => (value === "ice" ? "ice" : "hot");
+
+const parsePourType = (value: string): Pour["pourType"] => {
+  if (value === "center_around" || value === "center_only") return value;
+  return "all";
+};
+
 const EditLog = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -53,12 +67,7 @@ const EditLog = () => {
     drawdownTime: "" as string | number,
     bloomingTime: "" as string | number,
     hasBypass: false,
-    pours: [] as {
-      pourNumber: number;
-      waterAmount: number;
-      duration: number;
-      pourType: "all" | "center_around" | "center_only";
-    }[],
+    pours: [] as Pour[],
   });
 
   const [originalData, setOriginalData] = useState<typeof formData | null>(null);
@@ -98,13 +107,13 @@ const EditLog = () => {
           api.api.logs[":id"].$get({ param: { id } }),
         ]);
 
-        if (beansRes.ok) setBeans((await beansRes.json()) as Bean[]);
-        if (drippersRes.ok) setDrippers((await drippersRes.json()) as Dripper[]);
-        if (grindersRes.ok) setGrinders((await grindersRes.json()) as Grinder[]);
+        if (beansRes.ok) setBeans(await beansRes.json());
+        if (drippersRes.ok) setDrippers(await drippersRes.json());
+        if (grindersRes.ok) setGrinders(await grindersRes.json());
 
         if (logRes.ok) {
           const log = await logRes.json();
-          const initialData = {
+          const initialData: typeof formData = {
             beanId: log.beanId,
             brewDate:
               log.brewDate ||
@@ -119,7 +128,7 @@ const EditLog = () => {
             waterAmount: log.waterAmount !== null ? log.waterAmount : 150,
             rating: log.rating !== null ? log.rating : 3,
             note: log.note || "",
-            tempType: (log.tempType as "hot" | "ice") || "hot",
+            tempType: parseTempType(log.tempType),
             iceAmount: log.iceAmount !== null && log.iceAmount !== undefined ? log.iceAmount : "",
             yieldAmount:
               log.yieldAmount !== null && log.yieldAmount !== undefined ? log.yieldAmount : "",
@@ -127,20 +136,20 @@ const EditLog = () => {
               log.drawdownTime !== null && log.drawdownTime !== undefined ? log.drawdownTime : "",
             bloomingTime:
               log.bloomingTime !== null && log.bloomingTime !== undefined ? log.bloomingTime : "",
-            hasBypass: (log as any).hasBypass || false,
+            hasBypass: log.hasBypass || false,
             pours:
-              (log.pours as any[])?.map((p) => ({
+              log.pours?.map((p) => ({
                 pourNumber: p.pourNumber,
                 waterAmount: p.waterAmount,
                 duration: p.duration,
-                pourType: p.pourType,
+                pourType: parsePourType(p.pourType),
               })) || [],
           };
           setFormData(initialData);
           setOriginalData(initialData);
         } else {
           console.error("Log not found");
-          navigate("/logs");
+          void navigate("/logs");
         }
       } catch (err) {
         console.error("Failed to load edit log details", err);
@@ -149,7 +158,7 @@ const EditLog = () => {
       }
     };
 
-    fetchData();
+    void fetchData();
   }, [id, navigate]);
 
   const selectedGrinder = grinders.find((g) => g.id === formData.grinderId) || null;
@@ -204,7 +213,7 @@ const EditLog = () => {
     });
   };
 
-  const handlePourChange = (index: number, key: string, value: any) => {
+  const handlePourChange = <Key extends keyof Pour>(index: number, key: Key, value: Pour[Key]) => {
     setFormData((prev) => {
       const updatedPours = [...prev.pours];
       updatedPours[index] = {
@@ -213,7 +222,7 @@ const EditLog = () => {
       };
 
       let nextBloomingTime = prev.bloomingTime;
-      if (index === 0 && key === "duration") {
+      if (index === 0 && key === "duration" && typeof value === "number") {
         nextBloomingTime = value;
       }
 
@@ -340,7 +349,7 @@ const EditLog = () => {
       });
 
       if (res.ok) {
-        navigate(`/logs/${id}`);
+        void navigate(`/logs/${id}`);
       } else {
         console.error("Failed to update log", await res.text());
       }
@@ -982,7 +991,7 @@ const EditLog = () => {
                         <select
                           value={pour.pourType}
                           onChange={(e) =>
-                            handlePourChange(index, "pourType", e.target.value as any)
+                            handlePourChange(index, "pourType", parsePourType(e.target.value))
                           }
                           className="h-8 rounded-lg border border-coffee-secondary/20 bg-white px-1 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-coffee-primary transition-all w-20 text-coffee-text font-medium text-center"
                         >
