@@ -31,6 +31,7 @@ const createBeanSchema = z.object({
   purchaseDate: z.string().optional().nullable(),
   imageUrl: z.string().optional().nullable(),
   processMethod: z.string().optional().nullable(),
+  note: z.string().optional().nullable(),
   parentBeanId: z.string().uuid().optional().nullable(),
   version: z.string().optional().nullable(),
 });
@@ -45,6 +46,7 @@ const updateBeanSchema = z.object({
   imageUrl: z.string().optional().nullable(),
   isArchived: z.boolean().optional(),
   processMethod: z.string().optional().nullable(),
+  note: z.string().optional().nullable(),
   parentBeanId: z.string().uuid().optional().nullable(),
   version: z.string().optional().nullable(),
 });

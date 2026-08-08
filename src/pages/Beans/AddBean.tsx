@@ -39,6 +39,7 @@ const AddBean = () => {
     roastDate: "",
     purchaseDate: todayDate,
     processMethod: "",
+    note: "",
     version: todayDate.replace(/-/g, "."),
   });
 
@@ -95,6 +96,7 @@ const AddBean = () => {
           roastDate: formData.roastDate || null,
           purchaseDate: formData.purchaseDate || null,
           processMethod: formData.processMethod || null,
+          note: formData.note || null,
           parentBeanId: parentBeanId || null,
           version: formData.version || null,
         },
@@ -265,6 +267,18 @@ const AddBean = () => {
                 value={formData.purchaseDate}
                 onChange={handlePurchaseDateChange}
                 className="rounded-xl border-coffee-secondary/20 focus:ring-coffee-primary"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="note">メモ</Label>
+              <textarea
+                id="note"
+                rows={4}
+                placeholder="豆の特徴や購入時の情報などを自由に記録できます"
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                className="flex min-h-24 w-full resize-y rounded-xl border border-coffee-secondary/20 bg-white px-3 py-2 text-sm text-coffee-text ring-offset-white transition-all placeholder:text-coffee-secondary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coffee-primary focus-visible:ring-offset-2"
               />
             </div>
           </CardContent>

@@ -55,6 +55,7 @@ export const beans = brewlogSchema.table("beans", {
   purchaseDate: date("purchase_date"),
   imageUrl: text("image_url"),
   processMethod: text("process_method"),
+  note: text("note"),
   isArchived: boolean("is_archived").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
