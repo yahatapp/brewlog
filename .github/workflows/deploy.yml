@@ -38,6 +38,11 @@ jobs:
           nix develop --command pnpm run check
           nix develop --command pnpm test
 
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: nix develop --command pnpm run db:migrate
+
       - name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
