@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import app from "./index";
 import type { Env } from "./types";
 
@@ -33,4 +33,22 @@ describe("API authentication boundary", () => {
       expect(body).not.toContain(bindings.ALLOWED_LINE_USER_IDS);
     });
   }
+
+  it("does not expose JWT parser details for an invalid token", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      const response = await app.request(
+        "/api/beans",
+        { headers: { Authorization: "Bearer invalid-token" } },
+        bindings,
+      );
+      const body = await response.text();
+
+      expect(response.status).toBe(401);
+      expect(body).toBe("Unauthorized: Invalid ID Token");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
 });

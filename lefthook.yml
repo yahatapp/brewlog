@@ -9,5 +9,5 @@ pre-commit:
     - name: check staged diff
       run: git diff --cached --check
 
-    - name: reject large staged files
+    - name: reject sensitive or large staged files
       run: ./scripts/check-staged-files.sh

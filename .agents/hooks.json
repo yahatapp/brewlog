@@ -1,10 +1,10 @@
 {
-  "vp-check-fix": {
+  "repository-guard": {
     "Stop": [
       {
         "type": "command",
         "command": "pnpm",
-        "args": ["run", "guard:agent"]
+        "args": ["run", "guard:changes"]
       }
     ]
   }

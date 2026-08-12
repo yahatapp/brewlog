@@ -52,11 +52,14 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            nodejs_24
-            git
-            pnpm
+            bashInteractive
+            coreutils
             curl
+            git
+            gnugrep
             gitleaksPinned
+            nodejs_24
+            pnpm
           ];
 
           shellHook = ''
