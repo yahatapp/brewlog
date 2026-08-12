@@ -4,5 +4,5 @@ set -euo pipefail
 
 pnpm run guard:gitleaks-canary
 pnpm run guard:secrets
-vp check
+pnpm run check
 pnpm test

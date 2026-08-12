@@ -24,13 +24,9 @@ A lightweight coffee brewing log application for personal/couple use, running as
 
     ```bash
     direnv allow  # Nix環境の有効化
-    pnpm install  # 依存関係とLefthookのインストール
-    ```
-
-    Git hooksが自動設定されなかった場合は、次を実行してください。
-
-    ```bash
-    pnpm exec lefthook install --force --reset-hooks-path
+    ./scripts/setup-vp.sh  # 固定バージョンのVite+を検証してインストール
+    pnpm install
+    pnpm run hooks:install
     ```
 
 ## 💻 ローカル開発・デバッグ
@@ -90,7 +86,6 @@ Drizzle ORMを使用してスキーマを管理しています。
 - `vp check --fix`: 自動修正
 - `pnpm run guard:secrets`: リポジトリ全体の秘密情報スキャン
 - `pnpm run guard:changes`: 秘密情報、lint・型、テストをまとめて検証
-- `pnpm run guard:agent`: 自動修正後に`guard:changes`を実行するAIエージェント向けガード
 - `vp build`: 本番用ビルド
 - `pnpm run deploy`: 本番環境（Cloudflare Workers）へのデプロイ
 
@@ -98,7 +93,8 @@ Drizzle ORMを使用してスキーマを管理しています。
 
 Lefthookのpre-commitでは、ステージ済みの内容だけを対象に、Gitleaks、Vite+、
 `git diff --check`、512 KBを超えるファイルの拒否を実行します。GitleaksはNix dev shellに
-含まれ、Codex cloudでは`.codex/setup.sh`が検証済みバイナリを導入します。
+含まれます。Codex Cloudでも`.codex/setup.sh`が同じ`flake.nix`を評価し、Node.js、pnpm、
+Gitleaksなどをローカル・CIと同じNix環境から利用します。
 
 クラウド上のAIエージェントはコミットを作らず差分だけを返す場合があるため、Git hookだけに
 依存しません。`.agents/hooks.json`のStop hookとCIでも同じリポジトリ全体の検証を実行します。
@@ -107,7 +103,7 @@ Lefthookのpre-commitでは、ステージ済みの内容だけを対象に、Gi
 ```bash
 pnpm run guard:gitleaks-canary
 pnpm run guard:secrets
-pnpm run guard:agent
+pnpm run guard:changes
 ```
 
 ## 🔄 CI/CD (GitHub Actions)
@@ -127,7 +123,7 @@ nix develop --command pnpm run guard:secrets
 nix develop --command pnpm run check
 nix develop --command pnpm test
 nix develop --command pnpm run build
-nix develop --command pnpm audit --prod --audit-level high
+nix develop --command pnpm audit --prod --audit-level moderate
 ```
 
 ### GitHub EnvironmentとCloudflareの設定

@@ -33,7 +33,7 @@ Persistent context and project guidelines for coding agents working on Brewlog.
 - **Lint / Format / Typecheck:** `vp check`
 - **Auto-fix issues:** `vp check --fix`
 - **Run tests:** `vp test`
-- **Full agent guard:** `pnpm run guard:agent`
+- **Full agent guard:** `pnpm run guard:changes`
 - **Secret scan:** `pnpm run guard:secrets`
 
 ### Database (Drizzle ORM)
@@ -81,7 +81,7 @@ Persistent context and project guidelines for coding agents working on Brewlog.
 - **Strict Formatting:** Run `vp check --fix` automatically after every code change. Ensure there are no type errors, lint warnings, or formatting issues before finishing your task.
 - **Oxc Rules:** Strictly follow Oxc-based rules integrated in `Vite+` (`vp`).
 - **Security Rules:** Keep the explicit security-oriented Oxlint rules in `vite.config.ts` enabled. Do not use inline disables or unsafe type escapes to bypass them.
-- **Automatic Exit Hooks:** A `Stop` lifecycle hook is configured in [`.agents/hooks.json`](.agents/hooks.json) to automatically run `pnpm run guard:agent` upon agent session termination (the `Stop` hook). Nevertheless, proactively run `vp check --fix` after edits and `pnpm run guard:agent` before finishing.
+- **Automatic Exit Hooks:** A `Stop` lifecycle hook is configured in [`.agents/hooks.json`](.agents/hooks.json) to automatically run `pnpm run guard:changes` upon agent session termination (the `Stop` hook). Nevertheless, proactively run `vp check --fix` after edits and `pnpm run guard:changes` before finishing.
 
 ---
 
