@@ -84,24 +84,27 @@ Drizzle ORMを使用してスキーマを管理しています。
 
 - `vp check`: 構文チェック、フォーマット、型チェックを一括実行
 - `vp check --fix`: 自動修正
-- `pnpm run guard:secrets`: リポジトリ全体の秘密情報スキャン
+- `pnpm run guard:secrets`: 現在の作業ツリー全体の秘密情報スキャン
+- `pnpm run guard:secrets:ci -- <base> <head>`: 指定したコミット範囲の秘密情報スキャン
 - `pnpm run guard:changes`: 秘密情報、lint・型、テストをまとめて検証
 - `vp build`: 本番用ビルド
 - `pnpm run deploy`: 本番環境（Cloudflare Workers）へのデプロイ
 
 ### pre-commitとAIエージェントのガード
 
-Lefthookのpre-commitでは、ステージ済みの内容だけを対象に、Gitleaks、Vite+、
-`git diff --check`、512 KBを超えるファイルの拒否を実行します。GitleaksはNix dev shellに
+Lefthookのpre-commitでは、ステージ済みの内容だけを対象に、Betterleaks、Vite+、
+`git diff --check`、512 KBを超えるファイルの拒否を実行します。BetterleaksはNix dev shellに
 含まれます。Codex Cloudでも`.codex/setup.sh`が同じ`flake.nix`を評価し、Node.js、pnpm、
-Gitleaksなどをローカル・CIと同じNix環境から利用します。
+Betterleaksなどをローカル・CIと同じNix環境から利用します。
 
 クラウド上のAIエージェントはコミットを作らず差分だけを返す場合があるため、Git hookだけに
-依存しません。`.agents/hooks.json`のStop hookとCIでも同じリポジトリ全体の検証を実行します。
+依存しません。`.agents/hooks.json`のStop hookでは現在の作業ツリーを検査します。PRのCIでは
+baseからheadまでの全コミットを検査するため、PR内で追加後に削除された秘密も検出しますが、
+既存履歴全体は走査しません。
 ガードを個別に確認する場合は次を実行してください。
 
 ```bash
-pnpm run guard:gitleaks-canary
+pnpm run guard:betterleaks-canary
 pnpm run guard:secrets
 pnpm run guard:changes
 ```
@@ -118,8 +121,8 @@ Pull Requestでは`.github/workflows/ci.yml`がNix dev shell内でチェック�
 ```bash
 nix develop --command ./scripts/setup-vp.sh
 nix develop --command pnpm install --frozen-lockfile
-nix develop --command pnpm run guard:gitleaks-canary
-nix develop --command pnpm run guard:secrets
+nix develop --command pnpm run guard:betterleaks-canary
+nix develop --command pnpm run guard:secrets:ci -- <base-sha> <head-sha>
 nix develop --command pnpm run check
 nix develop --command pnpm test
 nix develop --command pnpm run build

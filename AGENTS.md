@@ -35,6 +35,7 @@ Persistent context and project guidelines for coding agents working on Brewlog.
 - **Run tests:** `vp test`
 - **Full agent guard:** `pnpm run guard:changes`
 - **Secret scan:** `pnpm run guard:secrets`
+- **Secret scanner canary:** `pnpm run guard:betterleaks-canary`
 
 ### Database (Drizzle ORM)
 
@@ -88,6 +89,6 @@ Persistent context and project guidelines for coding agents working on Brewlog.
 ## Critical Rules & "Do Nots" (Common Pitfalls)
 
 - 🚫 **DO NOT** commit `.env`, `.dev.vars`, or any secrets/keys to Git.
-- 🚫 **DO NOT** skip or disable Gitleaks, the Gitleaks canary, or the agent change guard.
+- 🚫 **DO NOT** skip or disable Betterleaks, the Betterleaks canary, or the agent change guard.
 - 🚫 **DO NOT** use `npm` or `yarn` for package management; only use `pnpm`.
 - 🚫 **DO NOT** bypass `vp check` — ensure the toolchain passes completely before finalizing any feature. Explicitly run `vp check --fix` after editing files.
